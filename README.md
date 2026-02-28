@@ -2,6 +2,12 @@
 
 A blazingly fast, high-fidelity terminal interface for the [CoinGecko API](https://docs.coingecko.com). Re-engineered from the ground up in **Rust** for near-zero latency, type-safety, and a premium terminal experience — with a full interactive TUI built on `ratatui`.
 
+<img width="609" height="670" alt="Screenshot 2026-03-01 at 7 36 43 AM" src="https://github.com/user-attachments/assets/0fe7e997-35cf-4064-9275-d68eeeccf600" />
+
+<img width="575" height="346" alt="Screenshot 2026-03-01 at 7 12 39 AM" src="https://github.com/user-attachments/assets/41b0c5f6-03b0-418a-af93-6f449e3c4002" />
+<img width="573" height="350" alt="Screenshot 2026-03-01 at 7 12 50 AM" src="https://github.com/user-attachments/assets/d13ba5c5-0e9a-4e0e-850c-51528e277828" />
+
+
 ---
 
 ## Why Rust?
@@ -22,6 +28,9 @@ git clone https://github.com/sachiew/coingecko-rs.git
 cd coingecko-rs
 cargo install --path .
 ```
+
+
+
 
 This installs two aliases: `cg` (short form) and `coingecko` (long form). Both are identical.
 
