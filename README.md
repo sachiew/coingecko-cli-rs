@@ -2,6 +2,15 @@
 
 A blazingly fast, high-fidelity terminal interface for the [CoinGecko API](https://docs.coingecko.com). Re-engineered from the ground up in **Rust** for near-zero latency, type-safety, and a premium terminal experience — with a full interactive TUI built on `ratatui`.
 
+## 🌟 Features at a Glance
+- 🎮 Interactive TUI Dashboard: A high-fidelity terminal interface with live-navigation and 7-day price charts.
+- ⚡ Real-Time Prices: Blazingly fast, type-safe API calls for the most current market valuations.
+- 📅 Deep Historical Data: Fetch precise data for specific dates, custom date ranges, or the past N days.
+- 📥 CSV Export Support: Export any market or history query directly to CSV for external analysis in Excel or Python.
+- 🏷️ Category Smart: Filter by over 500+ categories including AI, Layer-2, Tokenized Stocks, Gold, and Silver.
+- 📊 Unlimited Markets: Seamless pagination to fetch 1,000+ coins in a single command.
+- 🔥 Trending Everything: Real-time tracking of Trending Coins, NFTs, and Categories.
+
 <img width="609" height="670" alt="Screenshot 2026-03-01 at 7 36 43 AM" src="https://github.com/user-attachments/assets/0fe7e997-35cf-4064-9275-d68eeeccf600" />
 
 <img width="575" height="346" alt="Screenshot 2026-03-01 at 7 12 39 AM" src="https://github.com/user-attachments/assets/41b0c5f6-03b0-418a-af93-6f449e3c4002" />
@@ -19,18 +28,16 @@ A blazingly fast, high-fidelity terminal interface for the [CoinGecko API](https
 
 ---
 
-## Installation
+## 📦 Installation
 
-You need the Rust toolchain. Get it at [rustup.rs](https://rustup.rs/) if you don't have it.
+This tool is built in Rust. To install it, you must have the [Rust toolchain](https://rustup.rs/) installed on your system.
+
+### Install via Cargo
+You can install `coingecko-cli-rs` directly from the source without manual cloning:
 
 ```bash
-git clone https://github.com/sachiew/coingecko-rs.git
-cd coingecko-rs
-cargo install --path .
+cargo install --git https://github.com/sachiew/coingecko-cli-rs.git
 ```
-
-
-
 
 This installs two aliases: `cg` (short form) and `coingecko` (long form). Both are identical.
 
@@ -212,7 +219,7 @@ The `--category` flag works identically in both commands:
 - In `cg markets` — filters every page of the pagination loop, so `--total 300 --category defi` correctly returns 300 DeFi coins across multiple API pages
 - In `cg tui` — scopes the list view and shows the active category in **gold** in the header bar on every screen (list, loading, and detail)
 
-> **Tip:** Find category slugs by browsing the [CoinGecko categories page](https://www.coingecko.com/en/categories) and copying the slug from the URL (e.g. `coingecko.com/en/categories/layer-2` → `layer-2`).
+> **Tip:** Find category ids by browsing the [CoinGecko categories page](https://www.coingecko.com/en/categories) and copying the slug from the URL (e.g. `coingecko.com/en/categories/layer-2` → `layer-2`). You can also get the full list of category ids via this [endpoint](https://docs.coingecko.com/reference/coins-categories-list) or [google sheet](https://docs.google.com/spreadsheets/d/1wTTuxXt8n9q7C4NDXqQpI3wpKu1_5bGVmP9Xz0XGSyU/edit?gid=214581757#gid=214581757).
 
 ---
 
@@ -255,30 +262,8 @@ Launches a live interactive table of the **top 30 trending coins (24h)**.
 
 Pressing `Enter` on any coin fetches and displays a **split-panel detail view**:
 
-```
-┌─ ◆ CoinGecko  Bitcoin (BTC) — Detail ──────────────────────────────────────┐
-│ ┌── Info ───────────┐ ┌── 7-Day Price (USD) ──────────────────────────────┐ │
-│ │ Rank    1         │ │                                         ▲▲▲▲▲     │ │
-│ │ Name    Bitcoin   │ │              ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲     ▲▲▲ │ │
-│ │ Symbol  BTC       │ │         ▲▲▲▲▲                                     │ │
-│ │ ID      bitcoin   │ │    ▲▲▲▲▲                                           │ │
-│ │                   │ │                                                     │ │
-│ │ Price   $95,200   │ └─────────────────────────────────────────────────────┘ │
-│ │ Mkt Cap $1.88T    │                                                     │
-│ │ Vol 24h $42.10B   │                                                     │
-│ │ 24h Chg ▲ 2.34%   │                                                     │
-│ │                   │                                                     │
-│ │ Hi 24h  $96,100   │                                                     │
-│ │ Lo 24h  $93,800   │                                                     │
-│ │                   │                                                     │
-│ │ ATH     $108,786  │                                                     │
-│ │  date   2025-01-20│                                                     │
-│ │  from ATH ▼ 12.4% │                                                     │
-│ │ ATL     $67.81    │                                                     │
-│ │  date   2013-07-06│                                                     │
-│ │  from ATL ▲ ...%  │                                                     │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+<img width="692" height="411" alt="Screenshot 2026-03-01 at 6 56 23 AM" src="https://github.com/user-attachments/assets/6e7639ba-26d1-499e-8a6d-fc8a3664d88a" />
+
 
 **Left panel (30%)** — Info:
 - Rank, Name, Symbol, CoinGecko ID
