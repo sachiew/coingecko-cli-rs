@@ -331,21 +331,6 @@ cg history --help
 
 ---
 
-## Roadmap
-
-- [x] `price` — live prices by ID or symbol, multi-currency
-- [x] `markets` — paginated top-N by market cap, CSV export
-- [x] `search` — coin search
-- [x] `trending` — coins, NFTs, categories
-- [x] `history` — single date, rolling days, date range, CSV export
-- [x] `tui` — interactive top-50 markets with drill-down + 7-day chart
-- [x] `tui-trending` — interactive top-30 trending with drill-down + 7-day chart
-- [x] `--category` filtering for `markets` and `tui` (DeFi, RWA, tokenized stocks, AI, and more)
-- [ ] v1.4.0: Ethereum Gas Tracker
-- [ ] v1.5.0: Portfolio tracker (local watchlist)
-
----
-
 ## License
 
 MIT
