@@ -44,7 +44,6 @@ enum Commands {
     /// Show current auth configuration
     Status,
 
-    // Placeholder stubs — implemented in the next step
     /// Get the current price of one or more coins
     Price {
         /// Coin IDs, comma-separated (e.g. bitcoin,ethereum)
@@ -60,12 +59,16 @@ enum Commands {
 
     /// List top coins by market cap
     Markets {
+        /// Maximum number of coins to display
         #[arg(long, default_value = "100")]
         total: u32,
+        /// Quote currency (e.g. usd, eur)
         #[arg(long, default_value = "usd")]
         vs: String,
+        /// Sort order (e.g. `market_cap_desc`, `volume_desc`)
         #[arg(long, default_value = "market_cap_desc")]
         order: String,
+        /// Export results to CSV file at this path
         #[arg(long)]
         export: Option<String>,
         /// Filter by `CoinGecko` category slug (e.g. layer-2, defi, nft)
@@ -75,7 +78,9 @@ enum Commands {
 
     /// Search for coins, exchanges, and categories
     Search {
+        /// Search query (coin name, symbol, or ID)
         query: String,
+        /// Maximum number of results to display
         #[arg(long, default_value = "10")]
         limit: usize,
     },
@@ -96,17 +101,24 @@ enum Commands {
 
     /// Get historical price data for a coin
     History {
+        /// `CoinGecko` coin ID (e.g. bitcoin, ethereum)
         id: String,
+        /// Single date snapshot (YYYY-MM-DD)
         #[arg(long)]
         date: Option<String>,
+        /// Number of past days to chart
         #[arg(long)]
         days: Option<u32>,
+        /// Date range start (YYYY-MM-DD)
         #[arg(long)]
         from: Option<String>,
+        /// Date range end (YYYY-MM-DD)
         #[arg(long)]
         to: Option<String>,
+        /// Quote currency (e.g. usd, eur)
         #[arg(long, default_value = "usd")]
         vs: String,
+        /// Export results to CSV file at this path
         #[arg(long)]
         export: Option<String>,
     },
@@ -292,7 +304,10 @@ fn run_auth(key_flag: Option<String>, tier_flag: Option<String>) {
         k
     };
 
-    save_credentials(&api_key, &tier);
+    if let Err(e) = save_credentials(&api_key, &tier) {
+        eprintln!("{}", format!("  ✖  Failed to save credentials: {e}").red());
+        std::process::exit(1);
+    }
 
     let masked = mask_key(&api_key);
 

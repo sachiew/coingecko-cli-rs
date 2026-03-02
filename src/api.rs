@@ -20,17 +20,16 @@ struct Client {
 }
 
 impl Client {
-    fn build() -> Self {
+    fn build() -> Result<Self, Box<dyn std::error::Error>> {
         let creds = get_credentials();
-        Client {
+        Ok(Client {
             http: reqwest::Client::builder()
                 .user_agent(concat!("coingecko-cli/", env!("CARGO_PKG_VERSION")))
-                .build()
-                .expect("Failed to build HTTP client"),
+                .build()?,
             base_url: creds.tier.base_url(),
             header_name: creds.tier.header_key(),
             api_key: creds.api_key,
-        }
+        })
     }
 
     fn get(&self, path: &str) -> reqwest::RequestBuilder {
@@ -51,7 +50,7 @@ pub async fn run_price(
     vs: &str,
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::build();
+    let client = Client::build()?;
 
     // Resolve each symbol to a CoinGecko ID via /search.
     let mut resolved: Vec<String> = Vec::new();
@@ -173,7 +172,7 @@ fn change_cell(pct: Option<f64>) -> Cell {
 
 #[allow(clippy::too_many_lines)] // renders 3 tables sequentially; splitting would hurt readability
 pub async fn run_trending(json: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::build();
+    let client = Client::build()?;
     let resp = client.get("/search/trending").send().await?;
 
     if !resp.status().is_success() {
@@ -527,7 +526,7 @@ pub async fn run_markets(
     category: Option<&str>,
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::build();
+    let client = Client::build()?;
     let mut coins: Vec<MarketCoin> = Vec::new();
     let category_param = category
         .map(|c| format!("&category={c}"))
@@ -687,7 +686,7 @@ pub async fn run_search(
     limit: usize,
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::build();
+    let client = Client::build()?;
     let path = format!("/search?query={query}");
     let resp = client.get(&path).send().await?;
 
@@ -941,7 +940,7 @@ pub async fn fetch_top_coins(
     vs: &str,
     category: Option<&str>,
 ) -> Result<Vec<MarketEntry>, Box<dyn std::error::Error>> {
-    let client = Client::build();
+    let client = Client::build()?;
     let mut coins: Vec<MarketEntry> = Vec::new();
     let mut page = 1u32;
     let category_param = category
@@ -1013,7 +1012,7 @@ pub async fn fetch_coin_detail(
     id: &str,
     vs: &str,
 ) -> Result<CoinDetail, Box<dyn std::error::Error>> {
-    let client = Client::build();
+    let client = Client::build()?;
     let path = format!(
         "/coins/{id}?localization=false&tickers=false&community_data=false&developer_data=false"
     );
@@ -1045,7 +1044,7 @@ pub async fn fetch_coin_detail(
 }
 
 pub async fn fetch_trending_coins() -> Result<Vec<MarketEntry>, Box<dyn std::error::Error>> {
-    let client = Client::build();
+    let client = Client::build()?;
     let resp = client.get("/search/trending?show_max=coins").send().await?;
     if !resp.status().is_success() {
         return Err(format!("API error {}", resp.status()).into());
@@ -1088,7 +1087,7 @@ pub async fn fetch_coin_chart(
     days: u32,
     vs: &str,
 ) -> Result<Vec<(f64, f64)>, Box<dyn std::error::Error>> {
-    let client = Client::build();
+    let client = Client::build()?;
     let path = format!("/coins/{id}/market_chart?vs_currency={vs}&days={days}");
     let resp = client.get(&path).send().await?;
     if !resp.status().is_success() {
@@ -1119,7 +1118,7 @@ pub async fn run_history(
     export: Option<&str>,
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::build();
+    let client = Client::build()?;
 
     if let Some(d) = date {
         // Case A: single date snapshot
