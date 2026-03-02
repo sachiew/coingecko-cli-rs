@@ -43,6 +43,9 @@ dialoguer = "0.11"
 ratatui = "0.29"
 crossterm = "0.28"
 
+[dev-dependencies]
+assert_cmd = "2"
+
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 module_name_repetitions = "allow"

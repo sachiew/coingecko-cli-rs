@@ -184,3 +184,101 @@ pub fn format_change(value: f64) -> String {
         format!("▼ {fixed}").red().to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── format_usd ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn format_usd_whole_number() {
+        assert_eq!(format_usd(1234.0), "$1,234.00");
+    }
+
+    #[test]
+    fn format_usd_thousands_separator() {
+        assert_eq!(format_usd(1_000_000.5), "$1,000,000.50");
+    }
+
+    #[test]
+    fn format_usd_small_2_decimal() {
+        assert_eq!(format_usd(9.99), "$9.99");
+    }
+
+    #[test]
+    fn format_usd_small_4_decimal() {
+        // 0.01 <= value < 1.0 → 4 decimals
+        assert_eq!(format_usd(0.1234), "$0.1234");
+    }
+
+    #[test]
+    fn format_usd_small_6_decimal() {
+        // 0.0001 <= value < 0.01 → 6 decimals
+        assert_eq!(format_usd(0.005678), "$0.005678");
+    }
+
+    #[test]
+    fn format_usd_small_8_decimal() {
+        // value < 0.0001 → 8 decimals
+        assert_eq!(format_usd(0.00001234), "$0.00001234");
+    }
+
+    #[test]
+    fn format_usd_zero() {
+        // 0.0 abs < 0.0001 → 8 decimal places
+        assert_eq!(format_usd(0.0), "$0.00000000");
+    }
+
+    #[test]
+    fn format_usd_negative() {
+        // sign placed after $
+        assert_eq!(format_usd(-42.5), "$-42.50");
+    }
+
+    // ── format_large_usd ────────────────────────────────────────────────────
+
+    #[test]
+    fn format_large_usd_trillions() {
+        assert_eq!(format_large_usd(2.5e12), "$2.50T");
+    }
+
+    #[test]
+    fn format_large_usd_billions() {
+        assert_eq!(format_large_usd(1.23e9), "$1.23B");
+    }
+
+    #[test]
+    fn format_large_usd_millions() {
+        assert_eq!(format_large_usd(456.78e6), "$456.78M");
+    }
+
+    #[test]
+    fn format_large_usd_fallback() {
+        // Below 1M falls through to format_usd
+        assert_eq!(format_large_usd(999_999.0), "$999,999.00");
+    }
+
+    // ── format_change ───────────────────────────────────────────────────────
+
+    #[test]
+    fn format_change_positive() {
+        let result = format_change(5.25);
+        assert!(result.contains("▲"));
+        assert!(result.contains("5.25%"));
+    }
+
+    #[test]
+    fn format_change_negative() {
+        let result = format_change(-3.14);
+        assert!(result.contains("▼"));
+        assert!(result.contains("3.14%"));
+    }
+
+    #[test]
+    fn format_change_zero() {
+        let result = format_change(0.0);
+        assert!(result.contains("▲"));
+        assert!(result.contains("0.00%"));
+    }
+}
