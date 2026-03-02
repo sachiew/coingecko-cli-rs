@@ -115,6 +115,7 @@ enum Commands {
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 
 #[tokio::main]
+#[allow(clippy::too_many_lines)] // single dispatch over all CLI subcommands
 async fn main() {
     let cli = Cli::parse();
 
@@ -140,6 +141,7 @@ async fn main() {
             if let Err(e) = api::run_price(ids.as_deref(), symbols.as_deref(), &vs, cli.json).await
             {
                 eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
@@ -149,18 +151,21 @@ async fn main() {
             }
             if let Err(e) = api::run_trending(cli.json).await {
                 eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
         Some(Commands::Tui { category }) => {
             if let Err(e) = tui::run_tui(category.as_deref()).await {
                 eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
         Some(Commands::TuiTrending) => {
             if let Err(e) = tui::run_trending_tui().await {
                 eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
@@ -185,6 +190,7 @@ async fn main() {
             .await
             {
                 eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
@@ -194,6 +200,7 @@ async fn main() {
             }
             if let Err(e) = api::run_search(&query, limit, cli.json).await {
                 eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
@@ -222,6 +229,7 @@ async fn main() {
             .await
             {
                 eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
     }
