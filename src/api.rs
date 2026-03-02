@@ -25,6 +25,8 @@ impl Client {
         Ok(Client {
             http: reqwest::Client::builder()
                 .user_agent(concat!("coingecko-cli/", env!("CARGO_PKG_VERSION")))
+                .connect_timeout(std::time::Duration::from_secs(10))
+                .timeout(std::time::Duration::from_secs(30))
                 .build()?,
             base_url: creds.tier.base_url(),
             header_name: creds.tier.header_key(),

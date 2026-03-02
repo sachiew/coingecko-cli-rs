@@ -69,13 +69,26 @@ fn config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
 
 fn read_config() -> ConfigFile {
     let Ok(path) = config_path() else {
+        eprintln!("  ⚠  Could not determine config directory; using defaults");
         return ConfigFile::default();
     };
     if !path.exists() {
         return ConfigFile::default();
     }
-    let raw = fs::read_to_string(&path).unwrap_or_default();
-    serde_json::from_str(&raw).unwrap_or_default()
+    let raw = match fs::read_to_string(&path) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("  ⚠  Could not read config file: {e}");
+            return ConfigFile::default();
+        }
+    };
+    match serde_json::from_str(&raw) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("  ⚠  Malformed config file, using defaults: {e}");
+            ConfigFile::default()
+        }
+    }
 }
 
 fn write_config(cfg: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
