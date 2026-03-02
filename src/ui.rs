@@ -1,3 +1,5 @@
+//! Terminal UI helpers — colors, logo, welcome box, and number formatting.
+
 use colored::Colorize;
 
 // ─── Brand Colors ─────────────────────────────────────────────────────────────
@@ -48,7 +50,7 @@ pub fn print_logo() {
 
 // Safe for plain (uncolored) ASCII text only.
 fn plain_row(text: &str) -> String {
-    format!("| {:<76} |", text)
+    format!("| {text:<76} |")
 }
 
 // For rows that contain colored text: pass the string and its true visible
@@ -73,35 +75,47 @@ fn cmd_row(cmd: &str, comment: &str) -> String {
 }
 
 pub fn print_welcome_box() {
-    let top   = "+------------------------------------------------------------------------------+";
+    let top = "+------------------------------------------------------------------------------+";
     let blank = "|                                                                              |";
-    let sep   = colored_row(&dim(&"-".repeat(76)), 76);
+    let sep = colored_row(&dim(&"-".repeat(76)), 76);
 
-    println!("{}", top);
-    println!("{}", blank);
+    println!("{top}");
+    println!("{blank}");
     // "Official API Command Line Interface" = 35 visible chars; pad = 41
-    println!("{}", colored_row(&yellow_bold("Official API Command Line Interface"), 35));
-    println!("{}", blank);
-    println!("{}", sep);
-    println!("{}", blank);
+    println!(
+        "{}",
+        colored_row(&yellow_bold("Official API Command Line Interface"), 35)
+    );
+    println!("{blank}");
+    println!("{sep}");
+    println!("{blank}");
     println!("{}", plain_row("  Quick Start"));
-    println!("{}", blank);
-    println!("{}", cmd_row("cg auth",                 "# Set up your API key"));
-    println!("{}", cmd_row("cg price --ids bitcoin",  "# Get BTC price"));
-    println!("{}", cmd_row("cg markets --total 100",  "# Top 100 by mkt cap"));
-    println!("{}", cmd_row("cg search ethereum",      "# Search for a coin"));
-    println!("{}", cmd_row("cg trending",             "# Trending coins"));
-    println!("{}", cmd_row("cg history bitcoin -d 30","# 30-day history"));
-    println!("{}", blank);
-    println!("{}", sep);
-    println!("{}", blank);
+    println!("{blank}");
+    println!("{}", cmd_row("cg auth", "# Set up your API key"));
+    println!("{}", cmd_row("cg price --ids bitcoin", "# Get BTC price"));
+    println!(
+        "{}",
+        cmd_row("cg markets --total 100", "# Top 100 by mkt cap")
+    );
+    println!("{}", cmd_row("cg search ethereum", "# Search for a coin"));
+    println!("{}", cmd_row("cg trending", "# Trending coins"));
+    println!(
+        "{}",
+        cmd_row("cg history bitcoin -d 30", "# 30-day history")
+    );
+    println!("{blank}");
+    println!("{sep}");
+    println!("{blank}");
     // "  Docs: https://docs.coingecko.com" → 2 + 6 + 26 = 34 visible chars
-    println!("{}", colored_row(
-        &format!("  {}{}", dim("Docs: "), "https://docs.coingecko.com".cyan()),
-        34,
-    ));
-    println!("{}", blank);
-    println!("{}", top);
+    println!(
+        "{}",
+        colored_row(
+            &format!("  {}{}", dim("Docs: "), "https://docs.coingecko.com".cyan()),
+            34,
+        )
+    );
+    println!("{blank}");
+    println!("{top}");
     println!();
 }
 
@@ -130,7 +144,7 @@ pub fn format_usd(value: f64) -> String {
     };
 
     // Build integer part with thousands separators
-    let rounded = format!("{:.prec$}", value, prec = decimals);
+    let rounded = format!("{value:.decimals$}");
     let parts: Vec<&str> = rounded.splitn(2, '.').collect();
     let int_str = parts[0].trim_start_matches('-');
     let dec_str = if parts.len() > 1 { parts[1] } else { "" };
@@ -145,7 +159,7 @@ pub fn format_usd(value: f64) -> String {
     let int_formatted: String = int_formatted.chars().rev().collect();
 
     let sign = if value < 0.0 { "-" } else { "" };
-    format!("${}{}.{}", sign, int_formatted, dec_str)
+    format!("${sign}{int_formatted}.{dec_str}")
 }
 
 /// Format large USD values with T/B/M suffix.
@@ -165,8 +179,8 @@ pub fn format_large_usd(value: f64) -> String {
 pub fn format_change(value: f64) -> String {
     let fixed = format!("{:.2}%", value.abs());
     if value >= 0.0 {
-        format!("▲ {}", fixed).green().to_string()
+        format!("▲ {fixed}").green().to_string()
     } else {
-        format!("▼ {}", fixed).red().to_string()
+        format!("▼ {fixed}").red().to_string()
     }
 }

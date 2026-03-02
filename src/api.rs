@@ -1,3 +1,5 @@
+//! `CoinGecko` API client — HTTP requests, response types, and data formatting.
+
 use std::collections::HashMap;
 
 use comfy_table::presets::UTF8_BORDERS_ONLY;
@@ -22,7 +24,7 @@ impl Client {
         let creds = get_credentials();
         Client {
             http: reqwest::Client::builder()
-                .user_agent("coingecko-cli/1.2.0")
+                .user_agent(concat!("coingecko-cli/", env!("CARGO_PKG_VERSION")))
                 .build()
                 .expect("Failed to build HTTP client"),
             base_url: creds.tier.base_url(),
@@ -55,14 +57,17 @@ pub async fn run_price(
 
     if let Some(syms) = symbols {
         for sym in syms.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-            let path = format!("/search?query={}", sym);
+            let path = format!("/search?query={sym}");
             let resp = client.get(&path).send().await?;
             if resp.status().is_success() {
                 let body: Value = resp.json().await?;
                 if let Some(id) = body["coins"][0]["id"].as_str() {
                     resolved.push(id.to_string());
                 } else {
-                    eprintln!("{}", dim(&format!("  ⚠  No match for symbol '{}' — skipping.\n", sym)));
+                    eprintln!(
+                        "{}",
+                        dim(&format!("  ⚠  No match for symbol '{sym}' — skipping.\n"))
+                    );
                 }
             }
         }
@@ -80,10 +85,7 @@ pub async fn run_price(
     }
 
     let ids_param = resolved.join(",");
-    let path = format!(
-        "/simple/price?ids={}&vs_currencies={}&include_24hr_change=true",
-        ids_param, vs
-    );
+    let path = format!("/simple/price?ids={ids_param}&vs_currencies={vs}&include_24hr_change=true");
 
     let resp = client.get(&path).send().await?;
     if !resp.status().is_success() {
@@ -98,7 +100,10 @@ pub async fn run_price(
 
     let data: HashMap<String, HashMap<String, Value>> = resp.json().await?;
     if data.is_empty() {
-        eprintln!("{}", dim("  No results — check the coin IDs and try again.\n"));
+        eprintln!(
+            "{}",
+            dim("  No results — check the coin IDs and try again.\n")
+        );
         return Ok(());
     }
 
@@ -112,13 +117,23 @@ pub async fn run_price(
     table.load_preset(UTF8_BORDERS_ONLY);
 
     // Dynamic headers: one Price + one 24h column per currency.
-    let gold = Color::Rgb { r: 255, g: 215, b: 0 };
-    let mut headers = vec![
-        Cell::new("Coin").add_attribute(Attribute::Bold).fg(gold),
-    ];
+    let gold = Color::Rgb {
+        r: 255,
+        g: 215,
+        b: 0,
+    };
+    let mut headers = vec![Cell::new("Coin").add_attribute(Attribute::Bold).fg(gold)];
     for cur in &currencies {
-        headers.push(Cell::new(format!("Price ({})", cur.to_uppercase())).add_attribute(Attribute::Bold).fg(gold));
-        headers.push(Cell::new(format!("24h ({})", cur.to_uppercase())).add_attribute(Attribute::Bold).fg(gold));
+        headers.push(
+            Cell::new(format!("Price ({})", cur.to_uppercase()))
+                .add_attribute(Attribute::Bold)
+                .fg(gold),
+        );
+        headers.push(
+            Cell::new(format!("24h ({})", cur.to_uppercase()))
+                .add_attribute(Attribute::Bold)
+                .fg(gold),
+        );
     }
     table.set_header(headers);
 
@@ -126,7 +141,7 @@ pub async fn run_price(
         let mut row = vec![Cell::new(coin_id.as_str())];
         for cur in &currencies {
             let price = prices.get(*cur).and_then(Value::as_f64).unwrap_or(0.0);
-            let change_key = format!("{}_24h_change", cur);
+            let change_key = format!("{cur}_24h_change");
             let change = prices.get(&change_key).and_then(Value::as_f64);
             row.push(Cell::new(format_usd(price)));
             row.push(match change {
@@ -138,7 +153,7 @@ pub async fn run_price(
         table.add_row(row);
     }
 
-    println!("{}\n", table);
+    println!("{table}\n");
     Ok(())
 }
 
@@ -153,6 +168,7 @@ fn change_cell(pct: Option<f64>) -> Cell {
     }
 }
 
+#[allow(clippy::too_many_lines)] // renders 3 tables sequentially; splitting would hurt readability
 pub async fn run_trending() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::build();
     let resp = client.get("/search/trending").send().await?;
@@ -182,24 +198,52 @@ pub async fn run_trending() -> Result<(), Box<dyn std::error::Error>> {
         let mut table = Table::new();
         table.load_preset(UTF8_BORDERS_ONLY);
         table.set_header(vec![
-            Cell::new("Rank").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("Coin").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("Symbol").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("Price (USD)").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("24h Change").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
+            Cell::new("Rank")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("Coin")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("Symbol")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("Price (USD)")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("24h Change")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
         ]);
         for (i, entry) in coins.iter().enumerate() {
             let item = &entry["item"];
             let rank = item["market_cap_rank"]
                 .as_u64()
-                .map(|n| n.to_string())
-                .unwrap_or_else(|| format!("#{}", i + 1));
-            let name   = item["name"].as_str().unwrap_or("—");
+                .map_or_else(|| format!("#{}", i + 1), |n| n.to_string());
+            let name = item["name"].as_str().unwrap_or("—");
             let symbol = item["symbol"].as_str().unwrap_or("—").to_uppercase();
-            let price  = item["data"]["price"]
+            let price = item["data"]["price"]
                 .as_f64()
-                .map(format_usd)
-                .unwrap_or_else(|| "—".to_string());
+                .map_or_else(|| "—".to_string(), format_usd);
             let pct = item["data"]["price_change_percentage_24h"]["usd"].as_f64();
             table.add_row(vec![
                 Cell::new(rank),
@@ -209,7 +253,7 @@ pub async fn run_trending() -> Result<(), Box<dyn std::error::Error>> {
                 change_cell(pct),
             ]);
         }
-        println!("{}\n", table);
+        println!("{table}\n");
     }
 
     // ── Table 2: Trending NFTs ────────────────────────────────────────────────
@@ -222,27 +266,63 @@ pub async fn run_trending() -> Result<(), Box<dyn std::error::Error>> {
         let mut table = Table::new();
         table.load_preset(UTF8_BORDERS_ONLY);
         table.set_header(vec![
-            Cell::new("Name").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("Symbol").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("Floor Price").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("24h Change").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
+            Cell::new("Name")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("Symbol")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("Floor Price")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("24h Change")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
         ]);
         for nft in nfts {
-            let name   = nft["name"].as_str().unwrap_or("—");
+            let name = nft["name"].as_str().unwrap_or("—");
             let symbol = nft["symbol"].as_str().unwrap_or("—");
             // floor_price_in_native_currency can be f64 or a string depending on tier
-            let floor_val = nft["floor_price_in_native_currency"].as_f64()
-                .or_else(|| nft["floor_price_in_native_currency"].as_str()
-                    .and_then(|s| s.parse().ok()));
-            let currency = nft["native_currency_symbol"].as_str().unwrap_or("").to_uppercase();
+            let floor_val = nft["floor_price_in_native_currency"].as_f64().or_else(|| {
+                nft["floor_price_in_native_currency"]
+                    .as_str()
+                    .and_then(|s| s.parse().ok())
+            });
+            let currency = nft["native_currency_symbol"]
+                .as_str()
+                .unwrap_or("")
+                .to_uppercase();
             let floor = match floor_val {
-                Some(p) if !currency.is_empty() => format!("{:.4} {}", p, currency),
-                Some(p) => format!("{:.4}", p),
-                None => nft["data"]["floor_price"].as_str().unwrap_or("—").to_string(),
+                Some(p) if !currency.is_empty() => format!("{p:.4} {currency}"),
+                Some(p) => format!("{p:.4}"),
+                None => nft["data"]["floor_price"]
+                    .as_str()
+                    .unwrap_or("—")
+                    .to_string(),
             };
-            let pct = nft["floor_price_24h_percentage_change"].as_f64()
-                .or_else(|| nft["data"]["floor_price_in_usd_24h_percentage_change"]
-                    .as_str().and_then(|s| s.trim_end_matches('%').parse().ok()));
+            let pct = nft["floor_price_24h_percentage_change"]
+                .as_f64()
+                .or_else(|| {
+                    nft["data"]["floor_price_in_usd_24h_percentage_change"]
+                        .as_str()
+                        .and_then(|s| s.trim_end_matches('%').parse().ok())
+                });
             table.add_row(vec![
                 Cell::new(name),
                 Cell::new(symbol),
@@ -250,7 +330,7 @@ pub async fn run_trending() -> Result<(), Box<dyn std::error::Error>> {
                 change_cell(pct),
             ]);
         }
-        println!("{}\n", table);
+        println!("{table}\n");
     }
 
     // ── Table 3: Trending Categories ──────────────────────────────────────────
@@ -263,22 +343,44 @@ pub async fn run_trending() -> Result<(), Box<dyn std::error::Error>> {
         let mut table = Table::new();
         table.load_preset(UTF8_BORDERS_ONLY);
         table.set_header(vec![
-            Cell::new("Category").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("Coins").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("Market Cap").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-            Cell::new("24h Change").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
+            Cell::new("Category")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("Coins")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("Market Cap")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
+            Cell::new("24h Change")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Rgb {
+                    r: 255,
+                    g: 215,
+                    b: 0,
+                }),
         ]);
         for cat in cats {
-            let name  = cat["name"].as_str().unwrap_or("—");
+            let name = cat["name"].as_str().unwrap_or("—");
             let coins = cat["coins_count"]
                 .as_u64()
-                .map(|n| n.to_string())
-                .unwrap_or_else(|| "—".to_string());
-            let mcap  = cat["data"]["market_cap"]
+                .map_or_else(|| "—".to_string(), |n| n.to_string());
+            let mcap = cat["data"]["market_cap"]
                 .as_f64()
-                .map(format_large_usd)
-                .unwrap_or_else(|| "—".to_string());
-            let pct   = cat["data"]["market_cap_change_percentage_24h"]["usd"].as_f64();
+                .map_or_else(|| "—".to_string(), format_large_usd);
+            let pct = cat["data"]["market_cap_change_percentage_24h"]["usd"].as_f64();
             table.add_row(vec![
                 Cell::new(name),
                 Cell::new(coins),
@@ -286,7 +388,7 @@ pub async fn run_trending() -> Result<(), Box<dyn std::error::Error>> {
                 change_cell(pct),
             ]);
         }
-        println!("{}\n", table);
+        println!("{table}\n");
     }
 
     Ok(())
@@ -321,7 +423,7 @@ fn ymd_to_unix(year: i32, month: u32, day: u32) -> i64 {
     for m in 1..month {
         days += days_in_month(m, year);
     }
-    days += (day - 1) as i64;
+    days += i64::from(day - 1);
     days * 86400
 }
 
@@ -358,7 +460,14 @@ fn parse_ymd(s: &str) -> Option<(i32, u32, u32)> {
 
 fn to_api_date(s: &str) -> Option<String> {
     let (y, m, d) = parse_ymd(s)?;
-    Some(format!("{:02}-{:02}-{}", d, m, y))
+    Some(format!("{d:02}-{m:02}-{y}"))
+}
+
+/// Convert a millisecond f64 timestamp (from JSON) to a date string.
+fn ms_to_date(ms: f64) -> String {
+    #[allow(clippy::cast_possible_truncation)]
+    let secs = (ms as i64) / 1000;
+    unix_to_ymd(secs)
 }
 
 // ─── Markets ──────────────────────────────────────────────────────────────────
@@ -375,6 +484,7 @@ struct MarketCoin {
     price_change_percentage_24h: Option<f64>,
 }
 
+#[allow(clippy::too_many_lines)] // pagination + CSV export + table rendering in one flow
 pub async fn run_markets(
     total: u32,
     vs: &str,
@@ -385,11 +495,11 @@ pub async fn run_markets(
     let client = Client::build();
     let mut coins: Vec<MarketCoin> = Vec::new();
     let category_param = category
-        .map(|c| format!("&category={}", c))
+        .map(|c| format!("&category={c}"))
         .unwrap_or_default();
 
     if let Some(cat) = category {
-        println!("  Filtering by category: {}\n", cat);
+        println!("  Filtering by category: {cat}\n");
     }
 
     // Always request per_page=250 so that the API's page offset is consistent.
@@ -399,8 +509,7 @@ pub async fn run_markets(
     let mut page = 1u32;
     while coins.len() < total as usize {
         let path = format!(
-            "/coins/markets?vs_currency={}&order={}&per_page=250&page={}&sparkline=false&price_change_percentage=24h{}",
-            vs, order, page, category_param
+            "/coins/markets?vs_currency={vs}&order={order}&per_page=250&page={page}&sparkline=false&price_change_percentage=24h{category_param}"
         );
         let resp = client.get(&path).send().await?;
         if !resp.status().is_success() {
@@ -449,7 +558,7 @@ pub async fn run_markets(
                 c.market_cap.map(|m| m.to_string()).unwrap_or_default(),
                 c.total_volume.map(|v| v.to_string()).unwrap_or_default(),
                 c.price_change_percentage_24h
-                    .map(|ch| format!("{:.4}", ch))
+                    .map(|ch| format!("{ch:.4}"))
                     .unwrap_or_default(),
             ])?;
         }
@@ -461,32 +570,68 @@ pub async fn run_markets(
     let mut table = Table::new();
     table.load_preset(UTF8_BORDERS_ONLY);
     table.set_header(vec![
-        Cell::new("#").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("Name").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("Symbol").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new(format!("Price ({})", vs.to_uppercase())).add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("Market Cap").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("Volume").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("24h").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
+        Cell::new("#")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("Name")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("Symbol")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new(format!("Price ({})", vs.to_uppercase()))
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("Market Cap")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("Volume")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("24h")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
     ]);
 
     for c in &coins {
         let rank = c
             .market_cap_rank
-            .map(|r| r.to_string())
-            .unwrap_or_else(|| "—".to_string());
-        let price = c
-            .current_price
-            .map(format_usd)
-            .unwrap_or_else(|| "—".to_string());
+            .map_or_else(|| "—".to_string(), |r| r.to_string());
+        let price = c.current_price.map_or_else(|| "—".to_string(), format_usd);
         let mcap = c
             .market_cap
-            .map(format_large_usd)
-            .unwrap_or_else(|| "—".to_string());
+            .map_or_else(|| "—".to_string(), format_large_usd);
         let vol = c
             .total_volume
-            .map(format_large_usd)
-            .unwrap_or_else(|| "—".to_string());
+            .map_or_else(|| "—".to_string(), format_large_usd);
         let change_cell = match c.price_change_percentage_24h {
             Some(ch) if ch >= 0.0 => Cell::new(format!("▲ {:.2}%", ch.abs())).fg(Color::Green),
             Some(ch) => Cell::new(format!("▼ {:.2}%", ch.abs())).fg(Color::Red),
@@ -503,7 +648,7 @@ pub async fn run_markets(
         ]);
     }
 
-    println!("{}\n", table);
+    println!("{table}\n");
     Ok(())
 }
 
@@ -524,7 +669,7 @@ struct SearchCoin {
 
 pub async fn run_search(query: &str, limit: usize) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::build();
-    let path = format!("/search?query={}", query);
+    let path = format!("/search?query={query}");
     let resp = client.get(&path).send().await?;
 
     if !resp.status().is_success() {
@@ -548,17 +693,40 @@ pub async fn run_search(query: &str, limit: usize) -> Result<(), Box<dyn std::er
     let mut table = Table::new();
     table.load_preset(UTF8_BORDERS_ONLY);
     table.set_header(vec![
-        Cell::new("Rank").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("Name").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("Symbol").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("ID").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
+        Cell::new("Rank")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("Name")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("Symbol")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("ID")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
     ]);
 
     for c in coins {
         let rank = c
             .market_cap_rank
-            .map(|r| r.to_string())
-            .unwrap_or_else(|| "—".to_string());
+            .map_or_else(|| "—".to_string(), |r| r.to_string());
         table.add_row(vec![
             Cell::new(rank),
             Cell::new(c.name.as_str()),
@@ -567,7 +735,7 @@ pub async fn run_search(query: &str, limit: usize) -> Result<(), Box<dyn std::er
         ]);
     }
 
-    println!("{}\n", table);
+    println!("{table}\n");
     Ok(())
 }
 
@@ -592,6 +760,7 @@ struct ChartData {
     total_volumes: Vec<Vec<f64>>,
 }
 
+#[allow(clippy::too_many_lines)] // CSV export + table rendering in one flow
 fn display_chart(
     data: &ChartData,
     vs: &str,
@@ -614,10 +783,10 @@ fn display_chart(
         .and_then(|p| p.get(1))
         .copied()
         .unwrap_or(0.0);
-    let period_change = if first_price != 0.0 {
-        (last_price - first_price) / first_price * 100.0
-    } else {
+    let period_change = if first_price == 0.0 {
         0.0
+    } else {
+        (last_price - first_price) / first_price * 100.0
     };
 
     if let Some(path) = export {
@@ -639,7 +808,7 @@ fn display_chart(
                 .copied()
                 .unwrap_or(0.0);
             wtr.write_record(&[
-                unix_to_ymd(ts as i64 / 1000),
+                ms_to_date(ts),
                 price.to_string(),
                 mcap.to_string(),
                 vol.to_string(),
@@ -653,10 +822,34 @@ fn display_chart(
     let mut table = Table::new();
     table.load_preset(UTF8_BORDERS_ONLY);
     table.set_header(vec![
-        Cell::new("Date").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new(format!("Price ({})", vs.to_uppercase())).add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("Market Cap").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-        Cell::new("Volume").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
+        Cell::new("Date")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new(format!("Price ({})", vs.to_uppercase()))
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("Market Cap")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
+        Cell::new("Volume")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Rgb {
+                r: 255,
+                g: 215,
+                b: 0,
+            }),
     ]);
 
     for i in 0..data.prices.len() {
@@ -675,14 +868,14 @@ fn display_chart(
             .copied()
             .unwrap_or(0.0);
         table.add_row(vec![
-            Cell::new(unix_to_ymd(ts as i64 / 1000)),
+            Cell::new(ms_to_date(ts)),
             Cell::new(format_usd(price)),
             Cell::new(format_large_usd(mcap)),
             Cell::new(format_large_usd(vol)),
         ]);
     }
 
-    println!("{}\n", table);
+    println!("{table}\n");
     println!("  Period change: {}\n", format_change(period_change));
     Ok(())
 }
@@ -711,13 +904,12 @@ pub async fn fetch_top_coins(
     let mut coins: Vec<MarketEntry> = Vec::new();
     let mut page = 1u32;
     let category_param = category
-        .map(|c| format!("&category={}", c))
+        .map(|c| format!("&category={c}"))
         .unwrap_or_default();
 
     while coins.len() < n as usize {
         let path = format!(
-            "/coins/markets?vs_currency={}&order=market_cap_desc&per_page=250&page={}&sparkline=false&price_change_percentage=24h{}",
-            vs, page, category_param
+            "/coins/markets?vs_currency={vs}&order=market_cap_desc&per_page=250&page={page}&sparkline=false&price_change_percentage=24h{category_param}"
         );
         let resp = client.get(&path).send().await?;
         if !resp.status().is_success() {
@@ -782,8 +974,7 @@ pub async fn fetch_coin_detail(
 ) -> Result<CoinDetail, Box<dyn std::error::Error>> {
     let client = Client::build();
     let path = format!(
-        "/coins/{}?localization=false&tickers=false&community_data=false&developer_data=false",
-        id
+        "/coins/{id}?localization=false&tickers=false&community_data=false&developer_data=false"
     );
     let resp = client.get(&path).send().await?;
     if !resp.status().is_success() {
@@ -795,10 +986,18 @@ pub async fn fetch_coin_detail(
     Ok(CoinDetail {
         ath: md.ath.get(vs).copied().unwrap_or(0.0),
         ath_change_pct: md.ath_change_percentage.get(vs).copied().unwrap_or(0.0),
-        ath_date: md.ath_date.get(vs).map(|s| trim_date(s)).unwrap_or_default(),
+        ath_date: md
+            .ath_date
+            .get(vs)
+            .map(|s| trim_date(s))
+            .unwrap_or_default(),
         atl: md.atl.get(vs).copied().unwrap_or(0.0),
         atl_change_pct: md.atl_change_percentage.get(vs).copied().unwrap_or(0.0),
-        atl_date: md.atl_date.get(vs).map(|s| trim_date(s)).unwrap_or_default(),
+        atl_date: md
+            .atl_date
+            .get(vs)
+            .map(|s| trim_date(s))
+            .unwrap_or_default(),
         high_24h: md.high_24h.get(vs).copied().unwrap_or(0.0),
         low_24h: md.low_24h.get(vs).copied().unwrap_or(0.0),
     })
@@ -821,7 +1020,7 @@ pub async fn fetch_trending_coins() -> Result<Vec<MarketEntry>, Box<dyn std::err
         let name = item["name"].as_str().unwrap_or("—").to_string();
         let symbol = item["symbol"].as_str().unwrap_or("—").to_string();
         // rank holds the trending position (1-based); mcap_rank stored separately via the rank field fallback
-        let mcap_rank = item["market_cap_rank"].as_u64().unwrap_or(0) as u32;
+        let mcap_rank = u32::try_from(item["market_cap_rank"].as_u64().unwrap_or(0)).unwrap_or(0);
         let price = item["data"]["price"].as_f64().unwrap_or(0.0);
         let change_24h = item["data"]["price_change_percentage_24h"]["usd"]
             .as_f64()
@@ -837,7 +1036,7 @@ pub async fn fetch_trending_coins() -> Result<Vec<MarketEntry>, Box<dyn std::err
             market_cap: 0.0,
             volume: 0.0,
             change_24h,
-            trending_rank: Some((i + 1) as u32),
+            trending_rank: u32::try_from(i + 1).ok(),
         });
     }
     Ok(result)
@@ -849,24 +1048,26 @@ pub async fn fetch_coin_chart(
     vs: &str,
 ) -> Result<Vec<(f64, f64)>, Box<dyn std::error::Error>> {
     let client = Client::build();
-    let path = format!(
-        "/coins/{}/market_chart?vs_currency={}&days={}",
-        id, vs, days
-    );
+    let path = format!("/coins/{id}/market_chart?vs_currency={vs}&days={days}");
     let resp = client.get(&path).send().await?;
     if !resp.status().is_success() {
         return Err(format!("API error {}", resp.status()).into());
     }
     let data: ChartData = resp.json().await?;
+    let mut x = 0.0_f64;
     let points = data
         .prices
         .iter()
-        .enumerate()
-        .map(|(i, p)| (i as f64, p.get(1).copied().unwrap_or(0.0)))
+        .map(|p| {
+            let point = (x, p.get(1).copied().unwrap_or(0.0));
+            x += 1.0;
+            point
+        })
         .collect();
     Ok(points)
 }
 
+#[allow(clippy::too_many_lines)] // three distinct date modes with their own API calls
 pub async fn run_history(
     id: &str,
     date: Option<&str>,
@@ -881,7 +1082,7 @@ pub async fn run_history(
     if let Some(d) = date {
         // Case A: single date snapshot
         let api_date = to_api_date(d).ok_or("Invalid date format. Use YYYY-MM-DD.")?;
-        let path = format!("/coins/{}/history?date={}&localization=false", id, api_date);
+        let path = format!("/coins/{id}/history?date={api_date}&localization=false");
         let resp = client.get(&path).send().await?;
 
         if !resp.status().is_success() {
@@ -894,8 +1095,8 @@ pub async fn run_history(
             return Ok(());
         }
 
-        let data: HistoryPoint = resp.json().await?;
-        match data.market_data {
+        let snapshot: HistoryPoint = resp.json().await?;
+        match snapshot.market_data {
             None => eprintln!("{}", dim("  No market data available for this date.\n")),
             Some(md) => {
                 let price = md.current_price.get(vs).copied().unwrap_or(0.0);
@@ -905,8 +1106,20 @@ pub async fn run_history(
                 let mut table = Table::new();
                 table.load_preset(UTF8_BORDERS_ONLY);
                 table.set_header(vec![
-                    Cell::new("Metric").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
-                    Cell::new("Value").add_attribute(Attribute::Bold).fg(Color::Rgb { r: 255, g: 215, b: 0 }),
+                    Cell::new("Metric")
+                        .add_attribute(Attribute::Bold)
+                        .fg(Color::Rgb {
+                            r: 255,
+                            g: 215,
+                            b: 0,
+                        }),
+                    Cell::new("Value")
+                        .add_attribute(Attribute::Bold)
+                        .fg(Color::Rgb {
+                            r: 255,
+                            g: 215,
+                            b: 0,
+                        }),
                 ]);
                 table.add_row(vec![Cell::new("Date"), Cell::new(d)]);
                 table.add_row(vec![
@@ -921,7 +1134,7 @@ pub async fn run_history(
                     Cell::new("Volume (24h)"),
                     Cell::new(format_large_usd(vol)),
                 ]);
-                println!("{}\n", table);
+                println!("{table}\n");
 
                 if let Some(path) = export {
                     let mut wtr = csv::Writer::from_path(path)?;
@@ -933,13 +1146,13 @@ pub async fn run_history(
                         vol.to_string(),
                     ])?;
                     wtr.flush()?;
-                    println!("  Exported 1 row to {}", path);
+                    println!("  Exported 1 row to {path}");
                 }
             }
         }
     } else if let Some(n) = days {
         // Case B: past N days
-        let path = format!("/coins/{}/market_chart?vs_currency={}&days={}", id, vs, n);
+        let path = format!("/coins/{id}/market_chart?vs_currency={vs}&days={n}");
         let resp = client.get(&path).send().await?;
 
         if !resp.status().is_success() {
@@ -952,8 +1165,8 @@ pub async fn run_history(
             return Ok(());
         }
 
-        let data: ChartData = resp.json().await?;
-        display_chart(&data, vs, export)?;
+        let chart: ChartData = resp.json().await?;
+        display_chart(&chart, vs, export)?;
     } else if let (Some(f), Some(t)) = (from, to) {
         // Case C: date range
         let (fy, fm, fd) = parse_ymd(f).ok_or("Invalid --from date. Use YYYY-MM-DD.")?;
@@ -961,8 +1174,7 @@ pub async fn run_history(
         let from_unix = ymd_to_unix(fy, fm, fd);
         let to_unix = ymd_to_unix(ty, tm, td) + 86399;
         let path = format!(
-            "/coins/{}/market_chart/range?vs_currency={}&from={}&to={}",
-            id, vs, from_unix, to_unix
+            "/coins/{id}/market_chart/range?vs_currency={vs}&from={from_unix}&to={to_unix}"
         );
         let resp = client.get(&path).send().await?;
 
@@ -976,8 +1188,8 @@ pub async fn run_history(
             return Ok(());
         }
 
-        let data: ChartData = resp.json().await?;
-        display_chart(&data, vs, export)?;
+        let chart: ChartData = resp.json().await?;
+        display_chart(&chart, vs, export)?;
     } else {
         eprintln!(
             "{}",

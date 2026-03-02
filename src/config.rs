@@ -1,3 +1,5 @@
+//! Persistent configuration — API key and tier storage via OS config directory.
+
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -106,5 +108,5 @@ pub fn save_credentials(api_key: &str, tier: &Tier) {
 pub fn mask_key(key: &str) -> String {
     let visible = key.chars().take(6).collect::<String>();
     let hidden = "*".repeat(key.len().saturating_sub(6));
-    format!("{}{}", visible, hidden)
+    format!("{visible}{hidden}")
 }
