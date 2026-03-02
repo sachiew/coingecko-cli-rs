@@ -110,3 +110,86 @@ pub fn mask_key(key: &str) -> String {
     let hidden = "*".repeat(key.len().saturating_sub(6));
     format!("{visible}{hidden}")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── mask_key ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn mask_key_normal() {
+        assert_eq!(mask_key("ABCDEFGHIJ"), "ABCDEF****");
+    }
+
+    #[test]
+    fn mask_key_short() {
+        assert_eq!(mask_key("AB"), "AB");
+    }
+
+    #[test]
+    fn mask_key_empty() {
+        assert_eq!(mask_key(""), "");
+    }
+
+    #[test]
+    fn mask_key_exactly_six() {
+        assert_eq!(mask_key("123456"), "123456");
+    }
+
+    // ── Tier::as_str ────────────────────────────────────────────────────────
+
+    #[test]
+    fn tier_as_str_demo() {
+        assert_eq!(Tier::Demo.as_str(), "demo");
+    }
+
+    #[test]
+    fn tier_as_str_pro() {
+        assert_eq!(Tier::Pro.as_str(), "pro");
+    }
+
+    // ── Tier::from_str ──────────────────────────────────────────────────────
+
+    #[test]
+    fn tier_from_str_lowercase() {
+        assert_eq!(Tier::from_str("demo"), Some(Tier::Demo));
+        assert_eq!(Tier::from_str("pro"), Some(Tier::Pro));
+    }
+
+    #[test]
+    fn tier_from_str_mixed_case() {
+        assert_eq!(Tier::from_str("Demo"), Some(Tier::Demo));
+        assert_eq!(Tier::from_str("PRO"), Some(Tier::Pro));
+    }
+
+    #[test]
+    fn tier_from_str_invalid() {
+        assert_eq!(Tier::from_str("invalid"), None);
+        assert_eq!(Tier::from_str(""), None);
+    }
+
+    // ── Tier::base_url ──────────────────────────────────────────────────────
+
+    #[test]
+    fn tier_base_url_demo() {
+        assert!(Tier::Demo.base_url().contains("api.coingecko.com"));
+    }
+
+    #[test]
+    fn tier_base_url_pro() {
+        assert!(Tier::Pro.base_url().contains("pro-api"));
+    }
+
+    // ── Tier::header_key ────────────────────────────────────────────────────
+
+    #[test]
+    fn tier_header_key_demo() {
+        assert_eq!(Tier::Demo.header_key(), "x-cg-demo-api-key");
+    }
+
+    #[test]
+    fn tier_header_key_pro() {
+        assert_eq!(Tier::Pro.header_key(), "x-cg-pro-api-key");
+    }
+}
