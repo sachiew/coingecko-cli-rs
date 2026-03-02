@@ -91,12 +91,8 @@ pub async fn run_price(
     let resp = client.get(&path).send().await?;
     if !resp.status().is_success() {
         let status = resp.status();
-        eprintln!(
-            "  ✖  API error {}: {}",
-            status,
-            resp.text().await.unwrap_or_default()
-        );
-        return Ok(());
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("API error {status}: {body}").into());
     }
 
     let data: HashMap<String, HashMap<String, Value>> = resp.json().await?;
@@ -182,12 +178,8 @@ pub async fn run_trending(json: bool) -> Result<(), Box<dyn std::error::Error>> 
 
     if !resp.status().is_success() {
         let status = resp.status();
-        eprintln!(
-            "  ✖  API error {}: {}",
-            status,
-            resp.text().await.unwrap_or_default()
-        );
-        return Ok(());
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("API error {status}: {body}").into());
     }
 
     // Parse as generic Value — never fails on unexpected field types or names.
@@ -557,12 +549,8 @@ pub async fn run_markets(
         let resp = client.get(&path).send().await?;
         if !resp.status().is_success() {
             let status = resp.status();
-            eprintln!(
-                "  ✖  API error {}: {}",
-                status,
-                resp.text().await.unwrap_or_default()
-            );
-            return Ok(());
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("API error {status}: {body}").into());
         }
         let batch: Vec<MarketCoin> = resp.json().await?;
         if batch.is_empty() {
@@ -705,19 +693,15 @@ pub async fn run_search(
 
     if !resp.status().is_success() {
         let status = resp.status();
-        eprintln!(
-            "  ✖  API error {}: {}",
-            status,
-            resp.text().await.unwrap_or_default()
-        );
-        return Ok(());
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("API error {status}: {body}").into());
     }
 
-    let data: SearchResponse = resp.json().await?;
+    let mut data: SearchResponse = resp.json().await?;
 
     if json {
-        let truncated: Vec<&SearchCoin> = data.coins.iter().take(limit).collect();
-        println!("{}", serde_json::to_string_pretty(&truncated)?);
+        data.coins.truncate(limit);
+        println!("{}", serde_json::to_string_pretty(&data)?);
         return Ok(());
     }
 
@@ -1145,12 +1129,8 @@ pub async fn run_history(
 
         if !resp.status().is_success() {
             let status = resp.status();
-            eprintln!(
-                "  ✖  API error {}: {}",
-                status,
-                resp.text().await.unwrap_or_default()
-            );
-            return Ok(());
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("API error {status}: {body}").into());
         }
 
         let snapshot: HistoryPoint = resp.json().await?;
@@ -1238,12 +1218,8 @@ pub async fn run_history(
 
         if !resp.status().is_success() {
             let status = resp.status();
-            eprintln!(
-                "  ✖  API error {}: {}",
-                status,
-                resp.text().await.unwrap_or_default()
-            );
-            return Ok(());
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("API error {status}: {body}").into());
         }
 
         let chart: ChartData = resp.json().await?;
@@ -1261,12 +1237,8 @@ pub async fn run_history(
 
         if !resp.status().is_success() {
             let status = resp.status();
-            eprintln!(
-                "  ✖  API error {}: {}",
-                status,
-                resp.text().await.unwrap_or_default()
-            );
-            return Ok(());
+            let body = resp.text().await.unwrap_or_default();
+            return Err(format!("API error {status}: {body}").into());
         }
 
         let chart: ChartData = resp.json().await?;
