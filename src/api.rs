@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use comfy_table::presets::UTF8_BORDERS_ONLY;
 use comfy_table::{Attribute, Cell, Color, Table};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::config::get_credentials;
@@ -49,6 +49,7 @@ pub async fn run_price(
     ids: Option<&str>,
     symbols: Option<&str>,
     vs: &str,
+    json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::build();
 
@@ -99,6 +100,12 @@ pub async fn run_price(
     }
 
     let data: HashMap<String, HashMap<String, Value>> = resp.json().await?;
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&data)?);
+        return Ok(());
+    }
+
     if data.is_empty() {
         eprintln!(
             "{}",
@@ -169,7 +176,7 @@ fn change_cell(pct: Option<f64>) -> Cell {
 }
 
 #[allow(clippy::too_many_lines)] // renders 3 tables sequentially; splitting would hurt readability
-pub async fn run_trending() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_trending(json: bool) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::build();
     let resp = client.get("/search/trending").send().await?;
 
@@ -185,6 +192,11 @@ pub async fn run_trending() -> Result<(), Box<dyn std::error::Error>> {
 
     // Parse as generic Value — never fails on unexpected field types or names.
     let root: Value = resp.json().await?;
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&root)?);
+        return Ok(());
+    }
 
     let empty = vec![];
 
@@ -472,7 +484,7 @@ fn ms_to_date(ms: f64) -> String {
 
 // ─── Markets ──────────────────────────────────────────────────────────────────
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct MarketCoin {
     id: String,
     symbol: String,
@@ -484,6 +496,36 @@ struct MarketCoin {
     price_change_percentage_24h: Option<f64>,
 }
 
+fn export_markets_csv(coins: &[MarketCoin], path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let mut wtr = csv::Writer::from_path(path)?;
+    wtr.write_record([
+        "Rank",
+        "ID",
+        "Name",
+        "Symbol",
+        "Price",
+        "Market Cap",
+        "Volume 24h",
+        "24h Change %",
+    ])?;
+    for c in coins {
+        wtr.write_record(&[
+            c.market_cap_rank.map(|r| r.to_string()).unwrap_or_default(),
+            c.id.clone(),
+            c.name.clone(),
+            c.symbol.to_uppercase(),
+            c.current_price.map(|p| p.to_string()).unwrap_or_default(),
+            c.market_cap.map(|m| m.to_string()).unwrap_or_default(),
+            c.total_volume.map(|v| v.to_string()).unwrap_or_default(),
+            c.price_change_percentage_24h
+                .map(|ch| format!("{ch:.4}"))
+                .unwrap_or_default(),
+        ])?;
+    }
+    wtr.flush()?;
+    Ok(())
+}
+
 #[allow(clippy::too_many_lines)] // pagination + CSV export + table rendering in one flow
 pub async fn run_markets(
     total: u32,
@@ -491,6 +533,7 @@ pub async fn run_markets(
     order: &str,
     export: Option<&str>,
     category: Option<&str>,
+    json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::build();
     let mut coins: Vec<MarketCoin> = Vec::new();
@@ -498,7 +541,7 @@ pub async fn run_markets(
         .map(|c| format!("&category={c}"))
         .unwrap_or_default();
 
-    if let Some(cat) = category {
+    if !json && let Some(cat) = category {
         println!("  Filtering by category: {cat}\n");
     }
 
@@ -531,38 +574,22 @@ pub async fn run_markets(
     // Trim any overshoot from the last 250-coin page.
     coins.truncate(total as usize);
 
+    if json {
+        if let Some(path) = export {
+            export_markets_csv(&coins, path)?;
+            eprintln!("  Exported {} coins to {}", coins.len(), path);
+        }
+        println!("{}", serde_json::to_string_pretty(&coins)?);
+        return Ok(());
+    }
+
     if coins.is_empty() {
         eprintln!("{}", dim("  No coins found.\n"));
         return Ok(());
     }
 
     if let Some(path) = export {
-        let mut wtr = csv::Writer::from_path(path)?;
-        wtr.write_record([
-            "Rank",
-            "ID",
-            "Name",
-            "Symbol",
-            "Price",
-            "Market Cap",
-            "Volume 24h",
-            "24h Change %",
-        ])?;
-        for c in &coins {
-            wtr.write_record(&[
-                c.market_cap_rank.map(|r| r.to_string()).unwrap_or_default(),
-                c.id.clone(),
-                c.name.clone(),
-                c.symbol.to_uppercase(),
-                c.current_price.map(|p| p.to_string()).unwrap_or_default(),
-                c.market_cap.map(|m| m.to_string()).unwrap_or_default(),
-                c.total_volume.map(|v| v.to_string()).unwrap_or_default(),
-                c.price_change_percentage_24h
-                    .map(|ch| format!("{ch:.4}"))
-                    .unwrap_or_default(),
-            ])?;
-        }
-        wtr.flush()?;
+        export_markets_csv(&coins, path)?;
         println!("  Exported {} coins to {}", coins.len(), path);
         return Ok(());
     }
@@ -654,12 +681,12 @@ pub async fn run_markets(
 
 // ─── Search ───────────────────────────────────────────────────────────────────
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct SearchResponse {
     coins: Vec<SearchCoin>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct SearchCoin {
     id: String,
     name: String,
@@ -667,7 +694,11 @@ struct SearchCoin {
     market_cap_rank: Option<u32>,
 }
 
-pub async fn run_search(query: &str, limit: usize) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_search(
+    query: &str,
+    limit: usize,
+    json: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::build();
     let path = format!("/search?query={query}");
     let resp = client.get(&path).send().await?;
@@ -683,6 +714,13 @@ pub async fn run_search(query: &str, limit: usize) -> Result<(), Box<dyn std::er
     }
 
     let data: SearchResponse = resp.json().await?;
+
+    if json {
+        let truncated: Vec<&SearchCoin> = data.coins.iter().take(limit).collect();
+        println!("{}", serde_json::to_string_pretty(&truncated)?);
+        return Ok(());
+    }
+
     let coins: Vec<&SearchCoin> = data.coins.iter().take(limit).collect();
 
     if coins.is_empty() {
@@ -741,23 +779,52 @@ pub async fn run_search(query: &str, limit: usize) -> Result<(), Box<dyn std::er
 
 // ─── History ──────────────────────────────────────────────────────────────────
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct HistoryPoint {
     market_data: Option<HistoryMarketData>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct HistoryMarketData {
     current_price: HashMap<String, f64>,
     market_cap: HashMap<String, f64>,
     total_volume: HashMap<String, f64>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct ChartData {
     prices: Vec<Vec<f64>>,
     market_caps: Vec<Vec<f64>>,
     total_volumes: Vec<Vec<f64>>,
+}
+
+fn export_chart_csv(data: &ChartData, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let mut wtr = csv::Writer::from_path(path)?;
+    wtr.write_record(["Date", "Price", "Market Cap", "Volume"])?;
+    for i in 0..data.prices.len() {
+        let ts = data.prices[i].first().copied().unwrap_or(0.0);
+        let price = data.prices[i].get(1).copied().unwrap_or(0.0);
+        let mcap = data
+            .market_caps
+            .get(i)
+            .and_then(|r| r.get(1))
+            .copied()
+            .unwrap_or(0.0);
+        let vol = data
+            .total_volumes
+            .get(i)
+            .and_then(|r| r.get(1))
+            .copied()
+            .unwrap_or(0.0);
+        wtr.write_record(&[
+            ms_to_date(ts),
+            price.to_string(),
+            mcap.to_string(),
+            vol.to_string(),
+        ])?;
+    }
+    wtr.flush()?;
+    Ok(())
 }
 
 #[allow(clippy::too_many_lines)] // CSV export + table rendering in one flow
@@ -765,9 +832,23 @@ fn display_chart(
     data: &ChartData,
     vs: &str,
     export: Option<&str>,
+    json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if data.prices.is_empty() {
-        eprintln!("{}", dim("  No data available.\n"));
+        if json {
+            println!("[]");
+        } else {
+            eprintln!("{}", dim("  No data available.\n"));
+        }
+        return Ok(());
+    }
+
+    if json {
+        if let Some(path) = export {
+            export_chart_csv(data, path)?;
+            eprintln!("  Exported {} rows to {}", data.prices.len(), path);
+        }
+        println!("{}", serde_json::to_string_pretty(data)?);
         return Ok(());
     }
 
@@ -790,31 +871,7 @@ fn display_chart(
     };
 
     if let Some(path) = export {
-        let mut wtr = csv::Writer::from_path(path)?;
-        wtr.write_record(["Date", "Price", "Market Cap", "Volume"])?;
-        for i in 0..data.prices.len() {
-            let ts = data.prices[i].first().copied().unwrap_or(0.0);
-            let price = data.prices[i].get(1).copied().unwrap_or(0.0);
-            let mcap = data
-                .market_caps
-                .get(i)
-                .and_then(|r| r.get(1))
-                .copied()
-                .unwrap_or(0.0);
-            let vol = data
-                .total_volumes
-                .get(i)
-                .and_then(|r| r.get(1))
-                .copied()
-                .unwrap_or(0.0);
-            wtr.write_record(&[
-                ms_to_date(ts),
-                price.to_string(),
-                mcap.to_string(),
-                vol.to_string(),
-            ])?;
-        }
-        wtr.flush()?;
+        export_chart_csv(data, path)?;
         println!("  Exported {} rows to {}", data.prices.len(), path);
         return Ok(());
     }
@@ -1067,7 +1124,7 @@ pub async fn fetch_coin_chart(
     Ok(points)
 }
 
-#[allow(clippy::too_many_lines)] // three distinct date modes with their own API calls
+#[allow(clippy::too_many_lines, clippy::too_many_arguments)] // three distinct date modes with their own API calls
 pub async fn run_history(
     id: &str,
     date: Option<&str>,
@@ -1076,6 +1133,7 @@ pub async fn run_history(
     to: Option<&str>,
     vs: &str,
     export: Option<&str>,
+    json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::build();
 
@@ -1096,6 +1154,29 @@ pub async fn run_history(
         }
 
         let snapshot: HistoryPoint = resp.json().await?;
+
+        if json {
+            if let Some(ref md) = snapshot.market_data
+                && let Some(path) = export
+            {
+                let price = md.current_price.get(vs).copied().unwrap_or(0.0);
+                let mcap = md.market_cap.get(vs).copied().unwrap_or(0.0);
+                let vol = md.total_volume.get(vs).copied().unwrap_or(0.0);
+                let mut wtr = csv::Writer::from_path(path)?;
+                wtr.write_record(["date", "price", "market_cap", "volume"])?;
+                wtr.write_record(&[
+                    d.to_string(),
+                    price.to_string(),
+                    mcap.to_string(),
+                    vol.to_string(),
+                ])?;
+                wtr.flush()?;
+                eprintln!("  Exported 1 row to {path}");
+            }
+            println!("{}", serde_json::to_string_pretty(&snapshot)?);
+            return Ok(());
+        }
+
         match snapshot.market_data {
             None => eprintln!("{}", dim("  No market data available for this date.\n")),
             Some(md) => {
@@ -1166,7 +1247,7 @@ pub async fn run_history(
         }
 
         let chart: ChartData = resp.json().await?;
-        display_chart(&chart, vs, export)?;
+        display_chart(&chart, vs, export, json)?;
     } else if let (Some(f), Some(t)) = (from, to) {
         // Case C: date range
         let (fy, fm, fd) = parse_ymd(f).ok_or("Invalid --from date. Use YYYY-MM-DD.")?;
@@ -1189,7 +1270,7 @@ pub async fn run_history(
         }
 
         let chart: ChartData = resp.json().await?;
-        display_chart(&chart, vs, export)?;
+        display_chart(&chart, vs, export, json)?;
     } else {
         eprintln!(
             "{}",

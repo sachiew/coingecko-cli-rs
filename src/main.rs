@@ -22,6 +22,10 @@ use ui::{dim, green_bold, print_banner, print_logo, print_welcome_box, yellow_bo
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
+
+    /// Output results as JSON instead of formatted tables
+    #[arg(long, global = true)]
+    json: bool,
 }
 
 #[derive(Subcommand)]
@@ -130,15 +134,20 @@ async fn main() {
         }
 
         Some(Commands::Price { ids, symbols, vs }) => {
-            print_banner();
-            if let Err(e) = api::run_price(ids.as_deref(), symbols.as_deref(), &vs).await {
+            if !cli.json {
+                print_banner();
+            }
+            if let Err(e) = api::run_price(ids.as_deref(), symbols.as_deref(), &vs, cli.json).await
+            {
                 eprintln!("  ✖  {e}");
             }
         }
 
         Some(Commands::Trending) => {
-            print_banner();
-            if let Err(e) = api::run_trending().await {
+            if !cli.json {
+                print_banner();
+            }
+            if let Err(e) = api::run_trending(cli.json).await {
                 eprintln!("  ✖  {e}");
             }
         }
@@ -162,17 +171,28 @@ async fn main() {
             export,
             category,
         }) => {
-            print_banner();
-            if let Err(e) =
-                api::run_markets(total, &vs, &order, export.as_deref(), category.as_deref()).await
+            if !cli.json {
+                print_banner();
+            }
+            if let Err(e) = api::run_markets(
+                total,
+                &vs,
+                &order,
+                export.as_deref(),
+                category.as_deref(),
+                cli.json,
+            )
+            .await
             {
                 eprintln!("  ✖  {e}");
             }
         }
 
         Some(Commands::Search { query, limit }) => {
-            print_banner();
-            if let Err(e) = api::run_search(&query, limit).await {
+            if !cli.json {
+                print_banner();
+            }
+            if let Err(e) = api::run_search(&query, limit, cli.json).await {
                 eprintln!("  ✖  {e}");
             }
         }
@@ -186,7 +206,9 @@ async fn main() {
             vs,
             export,
         }) => {
-            print_banner();
+            if !cli.json {
+                print_banner();
+            }
             if let Err(e) = api::run_history(
                 &id,
                 date.as_deref(),
@@ -195,6 +217,7 @@ async fn main() {
                 to.as_deref(),
                 &vs,
                 export.as_deref(),
+                cli.json,
             )
             .await
             {
