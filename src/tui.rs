@@ -623,9 +623,11 @@ fn render_chart(
                 .labels(vec![
                     Span::styled("Day 1", gray),
                     Span::styled(
-                        {
+                        if x_max > 0.0 {
                             let mid_day = (x_mid / x_max * 6.0 + 1.0).round();
                             format!("Day {mid_day:.0}")
+                        } else {
+                            "Day 1".to_string()
                         },
                         gray,
                     ),

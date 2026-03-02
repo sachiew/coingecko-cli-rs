@@ -31,7 +31,7 @@ Single-binary CLI built with clap (derive). Two binaries (`cg` and `coingecko`) 
 
 ## Key Patterns
 
-- All API functions return `Result<(), Box<dyn std::error::Error>>`
+- Command functions (`run_*`) return `Result<(), Box<dyn std::error::Error>>`
+- Data-fetching functions (`fetch_*`) return `Result<T, Box<dyn std::error::Error>>`
 - Config stored as JSON in OS config dir via `directories` crate
-- `--json` flag outputs machine-readable JSON to stdout; all diagnostics go to stderr
 - Clippy pedantic lints are enabled in `Cargo.toml`
