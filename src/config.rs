@@ -57,18 +57,20 @@ pub struct Credentials {
 
 // ─── Config Path ──────────────────────────────────────────────────────────────
 
-fn config_path() -> PathBuf {
+fn config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let dirs = ProjectDirs::from("", "", "coingecko-cli")
-        .expect("Could not determine OS config directory");
+        .ok_or("Could not determine OS config directory")?;
     let dir = dirs.config_dir().to_path_buf();
-    fs::create_dir_all(&dir).expect("Could not create config directory");
-    dir.join("config.json")
+    fs::create_dir_all(&dir)?;
+    Ok(dir.join("config.json"))
 }
 
 // ─── Read / Write ─────────────────────────────────────────────────────────────
 
 fn read_config() -> ConfigFile {
-    let path = config_path();
+    let Ok(path) = config_path() else {
+        return ConfigFile::default();
+    };
     if !path.exists() {
         return ConfigFile::default();
     }
@@ -76,10 +78,11 @@ fn read_config() -> ConfigFile {
     serde_json::from_str(&raw).unwrap_or_default()
 }
 
-fn write_config(cfg: &ConfigFile) {
-    let path = config_path();
-    let json = serde_json::to_string_pretty(cfg).expect("Failed to serialize config");
-    fs::write(&path, json).expect("Failed to write config file");
+fn write_config(cfg: &ConfigFile) -> Result<(), Box<dyn std::error::Error>> {
+    let path = config_path()?;
+    let json = serde_json::to_string_pretty(cfg)?;
+    fs::write(&path, json)?;
+    Ok(())
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -97,11 +100,11 @@ pub fn get_credentials() -> Credentials {
     }
 }
 
-pub fn save_credentials(api_key: &str, tier: &Tier) {
+pub fn save_credentials(api_key: &str, tier: &Tier) -> Result<(), Box<dyn std::error::Error>> {
     write_config(&ConfigFile {
         api_key: Some(api_key.to_string()),
         tier: Some(tier.as_str().to_string()),
-    });
+    })
 }
 
 /// Mask an API key for display: show first 6 chars, then asterisks.
