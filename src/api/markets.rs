@@ -58,9 +58,6 @@ pub async fn run_markets(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::build()?;
     let mut coins: Vec<MarketCoin> = Vec::new();
-    let category_param = category
-        .map(|c| format!("&category={c}"))
-        .unwrap_or_default();
 
     if !json && let Some(cat) = category {
         println!("  Filtering by category: {cat}\n");
@@ -72,10 +69,19 @@ pub async fn run_markets(
     // After collecting enough we truncate to exactly `total`.
     let mut page = 1u32;
     while coins.len() < total as usize {
-        let path = format!(
-            "/coins/markets?vs_currency={vs}&order={order}&per_page=250&page={page}&sparkline=false&price_change_percentage=24h{category_param}"
-        );
-        let resp = client.get(&path).send().await?;
+        let page_str = page.to_string();
+        let mut params = vec![
+            ("vs_currency", vs),
+            ("order", order),
+            ("per_page", "250"),
+            ("page", &page_str),
+            ("sparkline", "false"),
+            ("price_change_percentage", "24h"),
+        ];
+        if let Some(cat) = category {
+            params.push(("category", cat));
+        }
+        let resp = client.get("/coins/markets").query(&params).send().await?;
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();

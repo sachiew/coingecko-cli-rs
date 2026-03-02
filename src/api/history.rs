@@ -166,8 +166,11 @@ pub async fn run_history(
     if let Some(d) = date {
         // Case A: single date snapshot
         let api_date = to_api_date(d).ok_or("Invalid date format. Use YYYY-MM-DD.")?;
-        let path = format!("/coins/{id}/history?date={api_date}&localization=false");
-        let resp = client.get(&path).send().await?;
+        let resp = client
+            .get(&format!("/coins/{id}/history"))
+            .query(&[("date", api_date.as_str()), ("localization", "false")])
+            .send()
+            .await?;
 
         if !resp.status().is_success() {
             let status = resp.status();
@@ -247,8 +250,12 @@ pub async fn run_history(
         }
     } else if let Some(n) = days {
         // Case B: past N days
-        let path = format!("/coins/{id}/market_chart?vs_currency={vs}&days={n}");
-        let resp = client.get(&path).send().await?;
+        let days_str = n.to_string();
+        let resp = client
+            .get(&format!("/coins/{id}/market_chart"))
+            .query(&[("vs_currency", vs), ("days", &days_str)])
+            .send()
+            .await?;
 
         if !resp.status().is_success() {
             let status = resp.status();
@@ -264,10 +271,13 @@ pub async fn run_history(
         let (ty, tm, td) = parse_ymd(t).ok_or("Invalid --to date. Use YYYY-MM-DD.")?;
         let from_unix = ymd_to_unix(fy, fm, fd);
         let to_unix = ymd_to_unix(ty, tm, td) + 86399;
-        let path = format!(
-            "/coins/{id}/market_chart/range?vs_currency={vs}&from={from_unix}&to={to_unix}"
-        );
-        let resp = client.get(&path).send().await?;
+        let from_str = from_unix.to_string();
+        let to_str = to_unix.to_string();
+        let resp = client
+            .get(&format!("/coins/{id}/market_chart/range"))
+            .query(&[("vs_currency", vs), ("from", &from_str), ("to", &to_str)])
+            .send()
+            .await?;
 
         if !resp.status().is_success() {
             let status = resp.status();

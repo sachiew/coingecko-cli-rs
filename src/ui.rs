@@ -215,13 +215,13 @@ mod tests {
     #[test]
     fn format_usd_small_6_decimal() {
         // 0.0001 <= value < 0.01 → 6 decimals
-        assert_eq!(format_usd(0.005678), "$0.005678");
+        assert_eq!(format_usd(0.005_678), "$0.005678");
     }
 
     #[test]
     fn format_usd_small_8_decimal() {
         // value < 0.0001 → 8 decimals
-        assert_eq!(format_usd(0.00001234), "$0.00001234");
+        assert_eq!(format_usd(0.000_012_34), "$0.00001234");
     }
 
     #[test]
@@ -270,9 +270,9 @@ mod tests {
 
     #[test]
     fn format_change_negative() {
-        let result = format_change(-3.14);
+        let result = format_change(-3.15);
         assert!(result.contains("▼"));
-        assert!(result.contains("3.14%"));
+        assert!(result.contains("3.15%"));
     }
 
     #[test]

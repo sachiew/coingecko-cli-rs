@@ -51,9 +51,15 @@ pub async fn run_price(
     }
 
     let ids_param = resolved.join(",");
-    let path = format!("/simple/price?ids={ids_param}&vs_currencies={vs}&include_24hr_change=true");
-
-    let resp = client.get(&path).send().await?;
+    let resp = client
+        .get("/simple/price")
+        .query(&[
+            ("ids", ids_param.as_str()),
+            ("vs_currencies", vs),
+            ("include_24hr_change", "true"),
+        ])
+        .send()
+        .await?;
     if !resp.status().is_success() {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();

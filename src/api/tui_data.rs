@@ -28,15 +28,21 @@ pub async fn fetch_top_coins(
     let client = Client::build()?;
     let mut coins: Vec<MarketEntry> = Vec::new();
     let mut page = 1u32;
-    let category_param = category
-        .map(|c| format!("&category={c}"))
-        .unwrap_or_default();
 
     while coins.len() < n as usize {
-        let path = format!(
-            "/coins/markets?vs_currency={vs}&order=market_cap_desc&per_page=250&page={page}&sparkline=false&price_change_percentage=24h{category_param}"
-        );
-        let resp = client.get(&path).send().await?;
+        let page_str = page.to_string();
+        let mut params = vec![
+            ("vs_currency", vs),
+            ("order", "market_cap_desc"),
+            ("per_page", "250"),
+            ("page", page_str.as_str()),
+            ("sparkline", "false"),
+            ("price_change_percentage", "24h"),
+        ];
+        if let Some(cat) = category {
+            params.push(("category", cat));
+        }
+        let resp = client.get("/coins/markets").query(&params).send().await?;
         if !resp.status().is_success() {
             return Err(format!("API error {}", resp.status()).into());
         }
@@ -98,10 +104,16 @@ pub async fn fetch_coin_detail(
     vs: &str,
 ) -> Result<CoinDetail, Box<dyn std::error::Error>> {
     let client = Client::build()?;
-    let path = format!(
-        "/coins/{id}?localization=false&tickers=false&community_data=false&developer_data=false"
-    );
-    let resp = client.get(&path).send().await?;
+    let resp = client
+        .get(&format!("/coins/{id}"))
+        .query(&[
+            ("localization", "false"),
+            ("tickers", "false"),
+            ("community_data", "false"),
+            ("developer_data", "false"),
+        ])
+        .send()
+        .await?;
     if !resp.status().is_success() {
         return Err(format!("API error {}", resp.status()).into());
     }
@@ -174,8 +186,12 @@ pub async fn fetch_coin_chart(
     vs: &str,
 ) -> Result<Vec<(f64, f64)>, Box<dyn std::error::Error>> {
     let client = Client::build()?;
-    let path = format!("/coins/{id}/market_chart?vs_currency={vs}&days={days}");
-    let resp = client.get(&path).send().await?;
+    let days_str = days.to_string();
+    let resp = client
+        .get(&format!("/coins/{id}/market_chart"))
+        .query(&[("vs_currency", vs), ("days", &days_str)])
+        .send()
+        .await?;
     if !resp.status().is_success() {
         return Err(format!("API error {}", resp.status()).into());
     }
