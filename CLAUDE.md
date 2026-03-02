@@ -33,5 +33,8 @@ Single-binary CLI built with clap (derive). Two binaries (`cg` and `coingecko`) 
 
 - Command functions (`run_*`) return `Result<(), Box<dyn std::error::Error>>`
 - Data-fetching functions (`fetch_*`) return `Result<T, Box<dyn std::error::Error>>`
+- `--json` flag outputs machine-readable JSON on all data commands (price, markets, search, trending, history)
+- In `--json` mode: only JSON goes to stdout; all diagnostics go to stderr
+- `--json` + `--export` both apply (CSV to file AND JSON to stdout)
 - Config stored as JSON in OS config dir via `directories` crate
 - Clippy pedantic lints are enabled in `Cargo.toml`
