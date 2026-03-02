@@ -139,7 +139,10 @@ async fn main() {
         }
 
         Some(Commands::Auth { key, tier }) => {
-            run_auth(key, tier);
+            if let Err(e) = run_auth(key, tier) {
+                eprintln!("  ✖  {e}");
+                std::process::exit(1);
+            }
         }
 
         Some(Commands::Status) => {
@@ -249,17 +252,15 @@ async fn main() {
 
 // ─── Auth Command ─────────────────────────────────────────────────────────────
 
-fn run_auth(key_flag: Option<String>, tier_flag: Option<String>) {
+fn run_auth(
+    key_flag: Option<String>,
+    tier_flag: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     print_banner();
 
     // ── Tier selection ────────────────────────────────────────────────────────
     let tier = if let Some(t) = tier_flag {
-        if let Some(tier) = Tier::from_str(&t) {
-            tier
-        } else {
-            eprintln!("{}", "  ✖  Tier must be \"demo\" or \"pro\"".red());
-            std::process::exit(1);
-        }
+        Tier::from_str(&t).ok_or("Tier must be \"demo\" or \"pro\"")?
     } else {
         let choices = &[
             "demo  — Free tier (public API)",
@@ -270,18 +271,14 @@ fn run_auth(key_flag: Option<String>, tier_flag: Option<String>) {
             .items(choices)
             .default(0)
             .interact()
-            .unwrap_or_else(|_| {
-                eprintln!("{}", "  ✖  Invalid selection".red());
-                std::process::exit(1);
-            });
+            .map_err(|_| "Cancelled")?;
         if idx == 0 { Tier::Demo } else { Tier::Pro }
     };
 
     // ── API Key ───────────────────────────────────────────────────────────────
     let api_key = if let Some(k) = key_flag {
         if k.is_empty() {
-            eprintln!("{}", "\n  ✖  API key cannot be empty\n".red());
-            std::process::exit(1);
+            return Err("API key cannot be empty".into());
         }
         k
     } else {
@@ -293,21 +290,14 @@ fn run_auth(key_flag: Option<String>, tier_flag: Option<String>) {
         let k: String = Input::new()
             .with_prompt(yellow_bold("  Enter your API key"))
             .interact_text()
-            .unwrap_or_else(|_| {
-                eprintln!("{}", "\n  ✖  Cancelled\n".red());
-                std::process::exit(1);
-            });
+            .map_err(|_| "Cancelled")?;
         if k.is_empty() {
-            eprintln!("{}", "\n  ✖  API key cannot be empty\n".red());
-            std::process::exit(1);
+            return Err("API key cannot be empty".into());
         }
         k
     };
 
-    if let Err(e) = save_credentials(&api_key, &tier) {
-        eprintln!("{}", format!("  ✖  Failed to save credentials: {e}").red());
-        std::process::exit(1);
-    }
+    save_credentials(&api_key, &tier)?;
 
     let masked = mask_key(&api_key);
 
@@ -327,6 +317,7 @@ fn run_auth(key_flag: Option<String>, tier_flag: Option<String>) {
     );
     println!("  ╰──────────────────────────────────╯");
     println!();
+    Ok(())
 }
 
 // ─── Status Command ───────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 use comfy_table::presets::UTF8_BORDERS_ONLY;
-use comfy_table::{Attribute, Cell, Color, Table};
+use comfy_table::{Attribute, Cell, Table};
 use serde::{Deserialize, Serialize};
 
 use super::client::Client;
@@ -116,53 +116,25 @@ pub async fn run_markets(
     table.set_header(vec![
         Cell::new("#")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("Name")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("Symbol")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new(format!("Price ({})", vs.to_uppercase()))
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("Market Cap")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("Volume")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("24h")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
     ]);
 
     for c in &coins {
@@ -176,11 +148,7 @@ pub async fn run_markets(
         let vol = c
             .total_volume
             .map_or_else(|| "—".to_string(), format_large_usd);
-        let change_cell = match c.price_change_percentage_24h {
-            Some(ch) if ch >= 0.0 => Cell::new(format!("▲ {:.2}%", ch.abs())).fg(Color::Green),
-            Some(ch) => Cell::new(format!("▼ {:.2}%", ch.abs())).fg(Color::Red),
-            None => Cell::new("—"),
-        };
+        let change_cell = super::trending::change_cell(c.price_change_percentage_24h);
         table.add_row(vec![
             Cell::new(rank),
             Cell::new(c.name.as_str()),

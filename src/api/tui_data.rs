@@ -167,6 +167,7 @@ pub async fn fetch_trending_coins() -> Result<Vec<MarketEntry>, Box<dyn std::err
     Ok(result)
 }
 
+#[allow(clippy::cast_precision_loss)] // sequential chart index — always small
 pub async fn fetch_coin_chart(
     id: &str,
     days: u32,
@@ -179,15 +180,11 @@ pub async fn fetch_coin_chart(
         return Err(format!("API error {}", resp.status()).into());
     }
     let data: ChartData = resp.json().await?;
-    let mut x = 0.0_f64;
     let points = data
         .prices
         .iter()
-        .map(|p| {
-            let point = (x, p.get(1).copied().unwrap_or(0.0));
-            x += 1.0;
-            point
-        })
+        .enumerate()
+        .map(|(i, p)| (i as f64, p.get(1).copied().unwrap_or(0.0)))
         .collect();
     Ok(points)
 }

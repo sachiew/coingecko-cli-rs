@@ -1,5 +1,5 @@
 use comfy_table::presets::UTF8_BORDERS_ONLY;
-use comfy_table::{Attribute, Cell, Color, Table};
+use comfy_table::{Attribute, Cell, Table};
 use serde::{Deserialize, Serialize};
 
 use super::client::Client;
@@ -24,8 +24,11 @@ pub async fn run_search(
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::build()?;
-    let path = format!("/search?query={query}");
-    let resp = client.get(&path).send().await?;
+    let resp = client
+        .get("/search")
+        .query(&[("query", query)])
+        .send()
+        .await?;
 
     if !resp.status().is_success() {
         let status = resp.status();
@@ -53,32 +56,16 @@ pub async fn run_search(
     table.set_header(vec![
         Cell::new("Rank")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("Name")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("Symbol")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("ID")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
     ]);
 
     for c in coins {

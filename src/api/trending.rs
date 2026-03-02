@@ -5,7 +5,7 @@ use serde_json::Value;
 use super::client::Client;
 use crate::ui::{dim, format_large_usd, format_usd, green_bold};
 
-fn change_cell(pct: Option<f64>) -> Cell {
+pub(crate) fn change_cell(pct: Option<f64>) -> Cell {
     match pct {
         Some(c) if c >= 0.0 => Cell::new(format!("▲ {:.2}%", c.abs())).fg(Color::Green),
         Some(c) => Cell::new(format!("▼ {:.2}%", c.abs())).fg(Color::Red),
@@ -46,39 +46,19 @@ pub async fn run_trending(json: bool) -> Result<(), Box<dyn std::error::Error>> 
         table.set_header(vec![
             Cell::new("Rank")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("Coin")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("Symbol")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("Price (USD)")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("24h Change")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
         ]);
         for (i, entry) in coins.iter().enumerate() {
             let item = &entry["item"];
@@ -114,32 +94,16 @@ pub async fn run_trending(json: bool) -> Result<(), Box<dyn std::error::Error>> 
         table.set_header(vec![
             Cell::new("Name")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("Symbol")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("Floor Price")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("24h Change")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
         ]);
         for nft in nfts {
             let name = nft["name"].as_str().unwrap_or("—");
@@ -191,32 +155,16 @@ pub async fn run_trending(json: bool) -> Result<(), Box<dyn std::error::Error>> 
         table.set_header(vec![
             Cell::new("Category")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("Coins")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("Market Cap")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
             Cell::new("24h Change")
                 .add_attribute(Attribute::Bold)
-                .fg(Color::Rgb {
-                    r: 255,
-                    g: 215,
-                    b: 0,
-                }),
+                .fg(super::GOLD),
         ]);
         for cat in cats {
             let name = cat["name"].as_str().unwrap_or("—");

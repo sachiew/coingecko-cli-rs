@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use comfy_table::presets::UTF8_BORDERS_ONLY;
-use comfy_table::{Attribute, Cell, Color, Table};
+use comfy_table::{Attribute, Cell, Table};
 use serde::{Deserialize, Serialize};
 
 use super::client::Client;
@@ -110,32 +110,16 @@ fn display_chart(
     table.set_header(vec![
         Cell::new("Date")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new(format!("Price ({})", vs.to_uppercase()))
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("Market Cap")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
         Cell::new("Volume")
             .add_attribute(Attribute::Bold)
-            .fg(Color::Rgb {
-                r: 255,
-                g: 215,
-                b: 0,
-            }),
+            .fg(super::GOLD),
     ]);
 
     for i in 0..data.prices.len() {
@@ -227,18 +211,10 @@ pub async fn run_history(
                 table.set_header(vec![
                     Cell::new("Metric")
                         .add_attribute(Attribute::Bold)
-                        .fg(Color::Rgb {
-                            r: 255,
-                            g: 215,
-                            b: 0,
-                        }),
+                        .fg(super::GOLD),
                     Cell::new("Value")
                         .add_attribute(Attribute::Bold)
-                        .fg(Color::Rgb {
-                            r: 255,
-                            g: 215,
-                            b: 0,
-                        }),
+                        .fg(super::GOLD),
                 ]);
                 table.add_row(vec![Cell::new("Date"), Cell::new(d)]);
                 table.add_row(vec![

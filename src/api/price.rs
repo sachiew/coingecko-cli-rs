@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use comfy_table::presets::UTF8_BORDERS_ONLY;
-use comfy_table::{Attribute, Cell, Color, Table};
+use comfy_table::{Attribute, Cell, Table};
 use serde_json::Value;
 
 use super::client::Client;
@@ -20,8 +20,11 @@ pub async fn run_price(
 
     if let Some(syms) = symbols {
         for sym in syms.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-            let path = format!("/search?query={sym}");
-            let resp = client.get(&path).send().await?;
+            let resp = client
+                .get("/search")
+                .query(&[("query", sym)])
+                .send()
+                .await?;
             if resp.status().is_success() {
                 let body: Value = resp.json().await?;
                 if let Some(id) = body["coins"][0]["id"].as_str() {
@@ -82,22 +85,21 @@ pub async fn run_price(
     table.load_preset(UTF8_BORDERS_ONLY);
 
     // Dynamic headers: one Price + one 24h column per currency.
-    let gold = Color::Rgb {
-        r: 255,
-        g: 215,
-        b: 0,
-    };
-    let mut headers = vec![Cell::new("Coin").add_attribute(Attribute::Bold).fg(gold)];
+    let mut headers = vec![
+        Cell::new("Coin")
+            .add_attribute(Attribute::Bold)
+            .fg(super::GOLD),
+    ];
     for cur in &currencies {
         headers.push(
             Cell::new(format!("Price ({})", cur.to_uppercase()))
                 .add_attribute(Attribute::Bold)
-                .fg(gold),
+                .fg(super::GOLD),
         );
         headers.push(
             Cell::new(format!("24h ({})", cur.to_uppercase()))
                 .add_attribute(Attribute::Bold)
-                .fg(gold),
+                .fg(super::GOLD),
         );
     }
     table.set_header(headers);
@@ -109,11 +111,7 @@ pub async fn run_price(
             let change_key = format!("{cur}_24h_change");
             let change = prices.get(&change_key).and_then(Value::as_f64);
             row.push(Cell::new(format_usd(price)));
-            row.push(match change {
-                Some(c) if c >= 0.0 => Cell::new(format!("▲ {:.2}%", c.abs())).fg(Color::Green),
-                Some(c) => Cell::new(format!("▼ {:.2}%", c.abs())).fg(Color::Red),
-                None => Cell::new("—"),
-            });
+            row.push(super::trending::change_cell(change));
         }
         table.add_row(row);
     }

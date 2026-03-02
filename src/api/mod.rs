@@ -1,5 +1,7 @@
 //! `CoinGecko` API client — HTTP requests, response types, and data formatting.
 
+use comfy_table::Color;
+
 mod client;
 mod date;
 mod history;
@@ -8,6 +10,12 @@ mod price;
 mod search;
 mod trending;
 mod tui_data;
+
+pub(crate) const GOLD: Color = Color::Rgb {
+    r: 255,
+    g: 215,
+    b: 0,
+};
 
 pub use history::run_history;
 pub use markets::run_markets;
