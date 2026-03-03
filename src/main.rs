@@ -62,7 +62,7 @@ enum Commands {
         order: String,
         #[arg(long)]
         export: Option<String>,
-        /// Filter by CoinGecko category slug (e.g. layer-2, defi, nft)
+        /// Filter by CoinGecko category id (e.g. layer-2, decentralized-finance-defi, non-fungible-tokens-nft)
         #[arg(long)]
         category: Option<String>,
     },
@@ -79,7 +79,7 @@ enum Commands {
 
     /// Browse top 50 coins interactively (TUI mode)
     Tui {
-        /// Filter by CoinGecko category slug (e.g. layer-2, defi, nft)
+        /// Filter by CoinGecko category id (e.g. layer-2, decentralized-finance-defi, non-fungible-tokens-nft)
         #[arg(long)]
         category: Option<String>,
     },
