@@ -78,6 +78,8 @@ cg status
 
 Fetch the current price of one or more coins. Supports both CoinGecko IDs and ticker symbols. Multiple quote currencies are supported.
 
+> **Tip:** Find coin ids by browsing the respective [CoinGecko coin page](https://www.coingecko.com/en/categories](https://www.coingecko.com/en/coins/bitcoin)) and copying the 'API ID'. You can also get the full list of coin ids via this [endpoint](https://docs.coingecko.com/reference/coins-list) or [google sheet](https://docs.google.com/spreadsheets/d/1wTTuxXt8n9q7C4NDXqQpI3wpKu1_5bGVmP9Xz0XGSyU/edit?gid=0#gid=0).
+
 ```bash
 # By ID
 cg price --ids bitcoin
@@ -116,7 +118,7 @@ cg markets --total 250 --export data.csv
 | `--vs` | `usd` | Quote currency |
 | `--order` | `market_cap_desc` | Sort order (e.g. `volume_desc`, `gecko_desc`) |
 | `--export` | — | Export to CSV file path |
-| `--category` | — | Filter by category slug (e.g. `layer-2`, `decentralized-finance-defi`, `tokenized-gold`) |
+| `--category` | — | Filter by category id (e.g. `layer-2`, `decentralized-finance-defi`, `tokenized-gold`) |
 
 **Output columns:** # | Name | Symbol | Price | Market Cap | Volume | 24h
 
@@ -224,7 +226,7 @@ The `--category` flag works identically in both commands:
 - In `cg markets` — filters every page of the pagination loop, so `--total 300 --category decentralized-finance-defi` correctly returns 300 DeFi coins across multiple API pages
 - In `cg tui` — scopes the list view and shows the active category in **gold** in the header bar on every screen (list, loading, and detail)
 
-> **Tip:** Find category ids by browsing the [CoinGecko categories page](https://www.coingecko.com/en/categories) and copying the slug from the URL (e.g. `coingecko.com/en/categories/layer-2` → `layer-2`). You can also get the full list of category ids via this [endpoint](https://docs.coingecko.com/reference/coins-categories-list) or [google sheet](https://docs.google.com/spreadsheets/d/1wTTuxXt8n9q7C4NDXqQpI3wpKu1_5bGVmP9Xz0XGSyU/edit?gid=214581757#gid=214581757).
+> **Tip:** Find category ids by browsing the [CoinGecko categories page](https://www.coingecko.com/en/categories) and copying the id of respective category page. You can also get the full list of category ids via this [endpoint](https://docs.coingecko.com/reference/coins-categories-list) or [google sheet](https://docs.google.com/spreadsheets/d/1wTTuxXt8n9q7C4NDXqQpI3wpKu1_5bGVmP9Xz0XGSyU/edit?gid=214581757#gid=214581757).
 
 ---
 
