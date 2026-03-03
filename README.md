@@ -2,6 +2,11 @@
 
 A blazingly fast, high-fidelity terminal interface for the [CoinGecko API](https://docs.coingecko.com). Re-engineered from the ground up in **Rust** for near-zero latency, type-safety, and a premium terminal experience — with a full interactive TUI built on `ratatui`.
 
+> [!NOTE]
+> CoinGecko CLI is currently in Beta.
+> We’re constantly improving, and your feedback is crucial. Please share your feedback via this [form](https://forms.gle/VgpVbwsSJLgE7D8Q7), or submit a PR.
+
+
 ## 🌟 Features at a Glance
 - 🎮 Interactive TUI Dashboard: A high-fidelity terminal interface with live-navigation and 7-day price charts.
 - ⚡ Real-Time Prices: Blazingly fast, type-safe API calls for the most current market valuations.
@@ -111,7 +116,7 @@ cg markets --total 250 --export data.csv
 | `--vs` | `usd` | Quote currency |
 | `--order` | `market_cap_desc` | Sort order (e.g. `volume_desc`, `gecko_desc`) |
 | `--export` | — | Export to CSV file path |
-| `--category` | — | Filter by category slug (e.g. `layer-2`, `defi`, `tokenized-gold`) |
+| `--category` | — | Filter by category slug (e.g. `layer-2`, `decentralized-finance-defi`, `tokenized-gold`) |
 
 **Output columns:** # | Name | Symbol | Price | Market Cap | Volume | 24h
 
@@ -216,7 +221,7 @@ cg markets --category layer-2 --export l2.csv     # Export all L2 tokens to CSV
 
 The `--category` flag works identically in both commands:
 
-- In `cg markets` — filters every page of the pagination loop, so `--total 300 --category defi` correctly returns 300 DeFi coins across multiple API pages
+- In `cg markets` — filters every page of the pagination loop, so `--total 300 --category decentralized-finance-defi` correctly returns 300 DeFi coins across multiple API pages
 - In `cg tui` — scopes the list view and shows the active category in **gold** in the header bar on every screen (list, loading, and detail)
 
 > **Tip:** Find category ids by browsing the [CoinGecko categories page](https://www.coingecko.com/en/categories) and copying the slug from the URL (e.g. `coingecko.com/en/categories/layer-2` → `layer-2`). You can also get the full list of category ids via this [endpoint](https://docs.coingecko.com/reference/coins-categories-list) or [google sheet](https://docs.google.com/spreadsheets/d/1wTTuxXt8n9q7C4NDXqQpI3wpKu1_5bGVmP9Xz0XGSyU/edit?gid=214581757#gid=214581757).
@@ -232,7 +237,7 @@ Two full-screen interactive modes built with [`ratatui`](https://ratatui.rs).
 ```bash
 cg tui
 cg tui --category layer-2
-cg tui --category defi
+cg tui --category decentralized-finance-defi
 ```
 
 Launches a live interactive table of the **top 50 coins by market cap**. Add `--category` to scope the list to any CoinGecko category — the active category is shown in gold in the header on every screen.
