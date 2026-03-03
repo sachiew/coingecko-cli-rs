@@ -1,16 +1,20 @@
+//! Interactive TUI mode — ratatui-based market and trending coin browser.
+
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Terminal,
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     symbols,
     text::{Line, Span},
-    widgets::{Axis, Block, Borders, Cell, Chart, Dataset, GraphType, Paragraph, Row, Table, TableState},
-    Terminal,
+    widgets::{
+        Axis, Block, Borders, Cell, Chart, Dataset, GraphType, Paragraph, Row, Table, TableState,
+    },
 };
 use std::io;
 
@@ -84,7 +88,7 @@ impl App {
 
 pub async fn run_tui(category: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     match category {
-        Some(cat) => print!("  Fetching top 50 coins in category: {}…", cat),
+        Some(cat) => print!("  Fetching top 50 coins in category: {cat}…"),
         None => print!("  Fetching top 50 coins…"),
     }
     let _ = std::io::Write::flush(&mut std::io::stdout());
@@ -136,7 +140,7 @@ async fn event_loop<B: ratatui::backend::Backend>(
         terminal.draw(|f| render(f, app))?;
 
         // block_in_place lets tokio know this thread will block briefly on keyboard input
-        let event = tokio::task::block_in_place(|| event::read())?;
+        let event = tokio::task::block_in_place(event::read)?;
 
         if let Event::Key(key) = event {
             if key.kind != KeyEventKind::Press {
@@ -206,16 +210,15 @@ fn outer_block(subtitle: &str, category: Option<&str>) -> Block<'static> {
     let mut spans = vec![
         Span::styled(
             " ◆ CoinGecko ",
-            Style::default().fg(GECKO_GREEN).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(GECKO_GREEN)
+                .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(
-            format!("{} ", subtitle),
-            Style::default().fg(Color::DarkGray),
-        ),
+        Span::styled(format!("{subtitle} "), Style::default().fg(Color::DarkGray)),
     ];
     if let Some(cat) = category {
         spans.push(Span::styled(
-            format!("[{}] ", cat),
+            format!("[{cat}] "),
             Style::default().fg(GOLD).add_modifier(Modifier::BOLD),
         ));
     }
@@ -322,8 +325,7 @@ fn render_trending_list(f: &mut ratatui::Frame, app: &mut App) {
             let (cs, ct) = change_fmt(c.change_24h);
             let trend_rank = c
                 .trending_rank
-                .map(|r| format!("#{}", r))
-                .unwrap_or_else(|| "—".to_string());
+                .map_or_else(|| "—".to_string(), |r| format!("#{r}"));
             let mcap_rank = if c.rank > 0 {
                 format!("#{}", c.rank)
             } else {
@@ -377,7 +379,7 @@ fn render_trending_list(f: &mut ratatui::Frame, app: &mut App) {
 // ─── Loading View ─────────────────────────────────────────────────────────────
 
 fn render_loading(f: &mut ratatui::Frame, app: &App, idx: usize) {
-    let name = app.coins.get(idx).map(|c| c.name.as_str()).unwrap_or("coin");
+    let name = app.coins.get(idx).map_or("coin", |c| c.name.as_str());
     let area = f.area();
     let block = outer_block("Loading…", app.category.as_deref());
     let inner = block.inner(area);
@@ -385,11 +387,15 @@ fn render_loading(f: &mut ratatui::Frame, app: &App, idx: usize) {
 
     let v = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Length(1), Constraint::Percentage(50)])
+        .constraints([
+            Constraint::Percentage(50),
+            Constraint::Length(1),
+            Constraint::Percentage(50),
+        ])
         .split(inner);
 
     f.render_widget(
-        Paragraph::new(format!("  Fetching 7-day chart for {}…", name))
+        Paragraph::new(format!("  Fetching 7-day chart for {name}…"))
             .style(Style::default().fg(Color::DarkGray))
             .alignment(Alignment::Center),
         v[1],
@@ -399,7 +405,9 @@ fn render_loading(f: &mut ratatui::Frame, app: &App, idx: usize) {
 // ─── Detail View ──────────────────────────────────────────────────────────────
 
 fn render_detail(f: &mut ratatui::Frame, app: &App, idx: usize) {
-    let Some(coin) = app.coins.get(idx) else { return };
+    let Some(coin) = app.coins.get(idx) else {
+        return;
+    };
     let area = f.area();
 
     let title = format!("{} ({}) — Detail", coin.name, coin.symbol.to_uppercase());
@@ -414,8 +422,7 @@ fn render_detail(f: &mut ratatui::Frame, app: &App, idx: usize) {
         .split(inner);
 
     f.render_widget(
-        Paragraph::new("  Esc / q / ← back to list")
-            .style(Style::default().fg(Color::DarkGray)),
+        Paragraph::new("  Esc / q / ← back to list").style(Style::default().fg(Color::DarkGray)),
         v[1],
     );
 
@@ -426,9 +433,16 @@ fn render_detail(f: &mut ratatui::Frame, app: &App, idx: usize) {
         .split(v[0]);
 
     render_metadata(f, coin, app.coin_detail.as_ref(), h[0]);
-    render_chart(f, &app.chart_data, &app.chart_error, coin, h[1]);
+    render_chart(
+        f,
+        app.chart_data.as_deref(),
+        app.chart_error.as_deref(),
+        coin,
+        h[1],
+    );
 }
 
+#[allow(clippy::similar_names)] // ath_* vs atl_* are semantically distinct (all-time high vs low)
 fn render_metadata(
     f: &mut ratatui::Frame,
     coin: &MarketEntry,
@@ -442,14 +456,35 @@ fn render_metadata(
 
     let mut lines = vec![
         Line::from(""),
-        Line::from(vec![Span::styled(" Rank    ", lbl), Span::styled(coin.rank.to_string(), val)]),
-        Line::from(vec![Span::styled(" Name    ", lbl), Span::styled(coin.name.clone(), val)]),
-        Line::from(vec![Span::styled(" Symbol  ", lbl), Span::styled(coin.symbol.to_uppercase(), val)]),
-        Line::from(vec![Span::styled(" ID      ", lbl), Span::styled(coin.id.clone(), val)]),
+        Line::from(vec![
+            Span::styled(" Rank    ", lbl),
+            Span::styled(coin.rank.to_string(), val),
+        ]),
+        Line::from(vec![
+            Span::styled(" Name    ", lbl),
+            Span::styled(coin.name.clone(), val),
+        ]),
+        Line::from(vec![
+            Span::styled(" Symbol  ", lbl),
+            Span::styled(coin.symbol.to_uppercase(), val),
+        ]),
+        Line::from(vec![
+            Span::styled(" ID      ", lbl),
+            Span::styled(coin.id.clone(), val),
+        ]),
         Line::from(""),
-        Line::from(vec![Span::styled(" Price   ", lbl), Span::styled(crate::ui::format_usd(coin.price), val)]),
-        Line::from(vec![Span::styled(" Mkt Cap ", lbl), Span::styled(crate::ui::format_large_usd(coin.market_cap), val)]),
-        Line::from(vec![Span::styled(" Vol 24h ", lbl), Span::styled(crate::ui::format_large_usd(coin.volume), val)]),
+        Line::from(vec![
+            Span::styled(" Price   ", lbl),
+            Span::styled(crate::ui::format_usd(coin.price), val),
+        ]),
+        Line::from(vec![
+            Span::styled(" Mkt Cap ", lbl),
+            Span::styled(crate::ui::format_large_usd(coin.market_cap), val),
+        ]),
+        Line::from(vec![
+            Span::styled(" Vol 24h ", lbl),
+            Span::styled(crate::ui::format_large_usd(coin.volume), val),
+        ]),
         Line::from(vec![Span::styled(" 24h Chg ", lbl), Span::styled(ct, cs)]),
     ];
 
@@ -498,7 +533,10 @@ fn render_metadata(
     f.render_widget(
         Paragraph::new(lines).block(
             Block::default()
-                .title(Span::styled(" Info ", Style::default().fg(GOLD).add_modifier(Modifier::BOLD)))
+                .title(Span::styled(
+                    " Info ",
+                    Style::default().fg(GOLD).add_modifier(Modifier::BOLD),
+                ))
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(GECKO_GREEN)),
         ),
@@ -508,8 +546,8 @@ fn render_metadata(
 
 fn render_chart(
     f: &mut ratatui::Frame,
-    chart_data: &Option<Vec<(f64, f64)>>,
-    chart_error: &Option<String>,
+    chart_data: Option<&[(f64, f64)]>,
+    chart_error: Option<&str>,
     coin: &MarketEntry,
     area: ratatui::layout::Rect,
 ) {
@@ -523,7 +561,7 @@ fn render_chart(
 
     if let Some(err) = chart_error {
         f.render_widget(
-            Paragraph::new(format!("  ✖  {}", err))
+            Paragraph::new(format!("  ✖  {err}"))
                 .style(Style::default().fg(Color::Red))
                 .block(block),
             area,
@@ -531,9 +569,11 @@ fn render_chart(
         return;
     }
 
-    let Some(data) = chart_data.as_deref() else {
+    let Some(data) = chart_data else {
         f.render_widget(
-            Paragraph::new("  No data.").style(Style::default().fg(Color::DarkGray)).block(block),
+            Paragraph::new("  No data.")
+                .style(Style::default().fg(Color::DarkGray))
+                .block(block),
             area,
         );
         return;
@@ -541,15 +581,22 @@ fn render_chart(
 
     if data.is_empty() {
         f.render_widget(
-            Paragraph::new("  No data points.").style(Style::default().fg(Color::DarkGray)).block(block),
+            Paragraph::new("  No data points.")
+                .style(Style::default().fg(Color::DarkGray))
+                .block(block),
             area,
         );
         return;
     }
 
     let min_y = data.iter().map(|(_, y)| *y).fold(f64::INFINITY, f64::min);
-    let max_y = data.iter().map(|(_, y)| *y).fold(f64::NEG_INFINITY, f64::max);
-    let x_max = (data.len() - 1) as f64;
+    let max_y = data
+        .iter()
+        .map(|(_, y)| *y)
+        .fold(f64::NEG_INFINITY, f64::max);
+    // Chart data has at most a few hundred points — well within f64 precision.
+    #[allow(clippy::cast_precision_loss)]
+    let x_max = data.len().saturating_sub(1) as f64;
     let margin = (max_y - min_y) * 0.05;
     let y_lo = (min_y - margin).max(0.0);
     let y_hi = max_y + margin;
@@ -564,7 +611,7 @@ fn render_chart(
         .data(data);
 
     let x_mid = x_max / 2.0;
-    let y_mid = (y_lo + y_hi) / 2.0;
+    let y_mid = f64::midpoint(y_lo, y_hi);
     let gray = Style::default().fg(Color::DarkGray);
 
     let chart = Chart::new(vec![dataset])
@@ -575,7 +622,15 @@ fn render_chart(
                 .bounds([0.0, x_max])
                 .labels(vec![
                     Span::styled("Day 1", gray),
-                    Span::styled(format!("Day {}", (x_mid / x_max * 6.0 + 1.0).round() as u32), gray),
+                    Span::styled(
+                        if x_max > 0.0 {
+                            let mid_day = (x_mid / x_max * 6.0 + 1.0).round();
+                            format!("Day {mid_day:.0}")
+                        } else {
+                            "Day 1".to_string()
+                        },
+                        gray,
+                    ),
                     Span::styled("Day 7", gray),
                 ]),
         )
@@ -597,8 +652,14 @@ fn render_chart(
 
 fn change_fmt(pct: f64) -> (Style, String) {
     if pct >= 0.0 {
-        (Style::default().fg(Color::Green), format!("▲ {:.2}%", pct.abs()))
+        (
+            Style::default().fg(Color::Green),
+            format!("▲ {:.2}%", pct.abs()),
+        )
     } else {
-        (Style::default().fg(Color::Red), format!("▼ {:.2}%", pct.abs()))
+        (
+            Style::default().fg(Color::Red),
+            format!("▼ {:.2}%", pct.abs()),
+        )
     }
 }

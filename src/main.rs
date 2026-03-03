@@ -1,3 +1,5 @@
+//! CLI entry point — argument parsing, command dispatch, and auth/status flows.
+
 mod api;
 mod config;
 mod tui;
@@ -14,19 +16,23 @@ use ui::{dim, green_bold, print_banner, print_logo, print_welcome_box, yellow_bo
 #[derive(Parser)]
 #[command(
     name = "cg",
-    version = "1.2.0",
+    version = env!("CARGO_PKG_VERSION"),
     about = "CoinGecko CLI — real-time crypto data from the terminal"
 )]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
+
+    /// Output results as JSON instead of formatted tables
+    #[arg(long, global = true)]
+    json: bool,
 }
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Save your CoinGecko API key and tier (demo/pro)
+    /// Save your `CoinGecko` API key and tier (demo/pro)
     Auth {
-        /// Your CoinGecko API key
+        /// Your `CoinGecko` API key
         #[arg(long)]
         key: Option<String>,
 
@@ -38,7 +44,6 @@ enum Commands {
     /// Show current auth configuration
     Status,
 
-    // Placeholder stubs — implemented in the next step
     /// Get the current price of one or more coins
     Price {
         /// Coin IDs, comma-separated (e.g. bitcoin,ethereum)
@@ -54,22 +59,28 @@ enum Commands {
 
     /// List top coins by market cap
     Markets {
+        /// Maximum number of coins to display
         #[arg(long, default_value = "100")]
         total: u32,
+        /// Quote currency (e.g. usd, eur)
         #[arg(long, default_value = "usd")]
         vs: String,
+        /// Sort order (e.g. `market_cap_desc`, `volume_desc`)
         #[arg(long, default_value = "market_cap_desc")]
         order: String,
+        /// Export results to CSV file at this path
         #[arg(long)]
         export: Option<String>,
-        /// Filter by CoinGecko category id (e.g. layer-2, decentralized-finance-defi, non-fungible-tokens-nft)
+        /// Filter by `CoinGecko` category id (e.g. layer-2, decentralized-finance-defi, non-fungible-tokens-nft)
         #[arg(long)]
         category: Option<String>,
     },
 
     /// Search for coins, exchanges, and categories
     Search {
+        /// Search query (coin name, symbol, or ID)
         query: String,
+        /// Maximum number of results to display
         #[arg(long, default_value = "10")]
         limit: usize,
     },
@@ -79,7 +90,7 @@ enum Commands {
 
     /// Browse top 50 coins interactively (TUI mode)
     Tui {
-        /// Filter by CoinGecko category id (e.g. layer-2, decentralized-finance-defi, non-fungible-tokens-nft)
+        /// Filter by `CoinGecko` category id (e.g. layer-2, decentralized-finance-defi, non-fungible-tokens-nft)
         #[arg(long)]
         category: Option<String>,
     },
@@ -90,17 +101,24 @@ enum Commands {
 
     /// Get historical price data for a coin
     History {
+        /// `CoinGecko` coin ID (e.g. bitcoin, ethereum)
         id: String,
+        /// Single date snapshot (YYYY-MM-DD)
         #[arg(long)]
         date: Option<String>,
+        /// Number of past days to chart
         #[arg(long)]
         days: Option<u32>,
+        /// Date range start (YYYY-MM-DD)
         #[arg(long)]
         from: Option<String>,
+        /// Date range end (YYYY-MM-DD)
         #[arg(long)]
         to: Option<String>,
+        /// Quote currency (e.g. usd, eur)
         #[arg(long, default_value = "usd")]
         vs: String,
+        /// Export results to CSV file at this path
         #[arg(long)]
         export: Option<String>,
     },
@@ -109,6 +127,7 @@ enum Commands {
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 
 #[tokio::main]
+#[allow(clippy::too_many_lines)] // single dispatch over all CLI subcommands
 async fn main() {
     let cli = Cli::parse();
 
@@ -120,7 +139,10 @@ async fn main() {
         }
 
         Some(Commands::Auth { key, tier }) => {
-            run_auth(key, tier);
+            if let Err(e) = run_auth(key, tier) {
+                eprintln!("  ✖  {e}");
+                std::process::exit(1);
+            }
         }
 
         Some(Commands::Status) => {
@@ -128,28 +150,37 @@ async fn main() {
         }
 
         Some(Commands::Price { ids, symbols, vs }) => {
-            print_banner();
-            if let Err(e) = api::run_price(ids.as_deref(), symbols.as_deref(), &vs).await {
-                eprintln!("  ✖  {}", e);
+            if !cli.json {
+                print_banner();
+            }
+            if let Err(e) = api::run_price(ids.as_deref(), symbols.as_deref(), &vs, cli.json).await
+            {
+                eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
         Some(Commands::Trending) => {
-            print_banner();
-            if let Err(e) = api::run_trending().await {
-                eprintln!("  ✖  {}", e);
+            if !cli.json {
+                print_banner();
+            }
+            if let Err(e) = api::run_trending(cli.json).await {
+                eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
         Some(Commands::Tui { category }) => {
             if let Err(e) = tui::run_tui(category.as_deref()).await {
-                eprintln!("  ✖  {}", e);
+                eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
         Some(Commands::TuiTrending) => {
             if let Err(e) = tui::run_trending_tui().await {
-                eprintln!("  ✖  {}", e);
+                eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
@@ -160,18 +191,31 @@ async fn main() {
             export,
             category,
         }) => {
-            print_banner();
-            if let Err(e) =
-                api::run_markets(total, &vs, &order, export.as_deref(), category.as_deref()).await
+            if !cli.json {
+                print_banner();
+            }
+            if let Err(e) = api::run_markets(
+                total,
+                &vs,
+                &order,
+                export.as_deref(),
+                category.as_deref(),
+                cli.json,
+            )
+            .await
             {
-                eprintln!("  ✖  {}", e);
+                eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
         Some(Commands::Search { query, limit }) => {
-            print_banner();
-            if let Err(e) = api::run_search(&query, limit).await {
-                eprintln!("  ✖  {}", e);
+            if !cli.json {
+                print_banner();
+            }
+            if let Err(e) = api::run_search(&query, limit, cli.json).await {
+                eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
 
@@ -184,7 +228,9 @@ async fn main() {
             vs,
             export,
         }) => {
-            print_banner();
+            if !cli.json {
+                print_banner();
+            }
             if let Err(e) = api::run_history(
                 &id,
                 date.as_deref(),
@@ -193,10 +239,12 @@ async fn main() {
                 to.as_deref(),
                 &vs,
                 export.as_deref(),
+                cli.json,
             )
             .await
             {
-                eprintln!("  ✖  {}", e);
+                eprintln!("  ✖  {e}");
+                std::process::exit(1);
             }
         }
     }
@@ -204,18 +252,15 @@ async fn main() {
 
 // ─── Auth Command ─────────────────────────────────────────────────────────────
 
-fn run_auth(key_flag: Option<String>, tier_flag: Option<String>) {
+fn run_auth(
+    key_flag: Option<String>,
+    tier_flag: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     print_banner();
 
     // ── Tier selection ────────────────────────────────────────────────────────
     let tier = if let Some(t) = tier_flag {
-        match Tier::from_str(&t) {
-            Some(tier) => tier,
-            None => {
-                eprintln!("{}", "  ✖  Tier must be \"demo\" or \"pro\"".red());
-                std::process::exit(1);
-            }
-        }
+        Tier::from_str(&t).ok_or("Tier must be \"demo\" or \"pro\"")?
     } else {
         let choices = &[
             "demo  — Free tier (public API)",
@@ -226,18 +271,14 @@ fn run_auth(key_flag: Option<String>, tier_flag: Option<String>) {
             .items(choices)
             .default(0)
             .interact()
-            .unwrap_or_else(|_| {
-                eprintln!("{}", "  ✖  Invalid selection".red());
-                std::process::exit(1);
-            });
+            .map_err(|_| "Cancelled")?;
         if idx == 0 { Tier::Demo } else { Tier::Pro }
     };
 
     // ── API Key ───────────────────────────────────────────────────────────────
     let api_key = if let Some(k) = key_flag {
         if k.is_empty() {
-            eprintln!("{}", "\n  ✖  API key cannot be empty\n".red());
-            std::process::exit(1);
+            return Err("API key cannot be empty".into());
         }
         k
     } else {
@@ -249,18 +290,14 @@ fn run_auth(key_flag: Option<String>, tier_flag: Option<String>) {
         let k: String = Input::new()
             .with_prompt(yellow_bold("  Enter your API key"))
             .interact_text()
-            .unwrap_or_else(|_| {
-                eprintln!("{}", "\n  ✖  Cancelled\n".red());
-                std::process::exit(1);
-            });
+            .map_err(|_| "Cancelled")?;
         if k.is_empty() {
-            eprintln!("{}", "\n  ✖  API key cannot be empty\n".red());
-            std::process::exit(1);
+            return Err("API key cannot be empty".into());
         }
         k
     };
 
-    save_credentials(&api_key, &tier);
+    save_credentials(&api_key, &tier)?;
 
     let masked = mask_key(&api_key);
 
@@ -280,6 +317,7 @@ fn run_auth(key_flag: Option<String>, tier_flag: Option<String>) {
     );
     println!("  ╰──────────────────────────────────╯");
     println!();
+    Ok(())
 }
 
 // ─── Status Command ───────────────────────────────────────────────────────────
